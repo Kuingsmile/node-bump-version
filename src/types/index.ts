@@ -31,12 +31,15 @@ export interface PackageJson {
   types?: string;
   bin?: Record<string, string> | string;
   scripts?: Record<string, string>;
-  dependencies?: Record<string, string>;
-  devDependencies?: Record<string, string>;
+  dependencies?: Record<string, string>;  devDependencies?: Record<string, string>;
   [key: string]: any;
 }
 
-export type LogLevel = 'success' | 'info' | 'warn' | 'error';
+/**
+ * Available log levels for the logger utility
+ */
+export const LOG_LEVELS = ['success', 'info', 'warn', 'error'] as const;
+export type LogLevel = typeof LOG_LEVELS[number];
 
 export type ReleaseType = 'major' | 'minor' | 'patch' | 'premajor' | 'preminor' | 'prepatch' | 'prerelease';
 

@@ -27,11 +27,11 @@ Also, add the following data at the top level in your `package.json` to properly
     "path": "./node_modules/cz-customizable"
   },
   "cz-customizable": {
-    "config": "./node_modules/node-bump-version/.cz-config.js"
+    "config": "./node_modules/node-bump-version/.cz-config.cjs"
   }
 },
 "commitlint": {
-  "extends": ["./node_modules/node-bump-version/commitlint-node"]
+  "extends": ["./node_modules/node-bump-version/dist/commitlint-node/index.js"]
 }
 ```
 
@@ -78,7 +78,7 @@ yarn cz
 
 This leads to an interactive submit message interface:
 
-```
+```bash
 ? Select the type of change that you're committing: (Use arrow keys)
 ❯ Feature:  when adding new features 
   Fix:      when fixing bugs 

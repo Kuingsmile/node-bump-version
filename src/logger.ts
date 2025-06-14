@@ -1,21 +1,42 @@
 import chalk from 'chalk';
 
 import ora from './ora.js';
-import { LogLevel } from './types/index.js';
+import { LOG_LEVELS,type LogLevel } from './types/index.js';
 
-const level: Record<LogLevel, string> = {
-  success: 'green',
-  info: 'blue',
-  warn: 'yellow',
-  error: 'red'
+
+const LOG_LEVEL_COLORS = {
+  success: chalk.green,
+  info: chalk.blue,
+  warn: chalk.yellow,
+  error: chalk.red,
+} as const satisfies Record<LogLevel, typeof chalk.green>;
+
+
+export const isValidLogLevel = (level: string): level is LogLevel => {
+  return LOG_LEVELS.includes(level as LogLevel);
 };
+const logger = (message: string, logLevel: LogLevel): void => {
+  // Validate log level using type-safe validation
+  if (!isValidLogLevel(logLevel)) {
+    throw new Error(`Invalid log level: ${logLevel}. Valid levels are: ${LOG_LEVELS.join(', ')}`);
+  }
 
-const logger = (msg: string, type: LogLevel): void => {
-  let log = (chalk as any)[level[type]](`[Bump ${type.toUpperCase()}]: `);
-  log += msg;
+  const colorFunction = LOG_LEVEL_COLORS[logLevel];
+  const prefix = colorFunction(`[Bump ${logLevel.toUpperCase()}]: `);
+  const formattedMessage = `${prefix}${message}`;
+
   ora.clear();
   ora.frame();
-  console.log(log);
+  console.log(formattedMessage);
+};
+
+export const logSuccess = (message: string): void => logger(message, 'success');
+export const logInfo = (message: string): void => logger(message, 'info');
+export const logWarn = (message: string): void => logger(message, 'warn');
+export const logError = (message: string): void => logger(message, 'error');
+
+export const logMultiple = (messages: string[], logLevel: LogLevel): void => {
+  messages.forEach(message => logger(message, logLevel));
 };
 
 export default logger;

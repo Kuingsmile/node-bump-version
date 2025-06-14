@@ -1,7 +1,5 @@
-#!/usr/bin/env node
-
-import { createRequire } from 'node:module';
-import * as path from 'node:path';
+import { createRequire } from 'node:module'
+import * as path from 'node:path'
 
 import inquirer from 'inquirer';
 import _ from 'lodash';
