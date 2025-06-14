@@ -15,15 +15,15 @@
     "build": "rollup -c",
     "dev": "rollup -c --watch",
     "clean": "rimraf dist",
-    "prepublishOnly": "npm run clean && npm run build",
+    "prepublishOnly": "yarn run clean && yarn run build",
     "cz": "git-cz",
-    "release": "npm run build && node ./dist/bin/bump-version.js",
+    "release": "yarn run build && node ./dist/bin/bump-version.js",
     "lint": "eslint --fix",
     "lint:check": "eslint"
   },
   "husky": {
     "hooks": {
-      "pre-commit": "npm run lint",
+      "pre-commit": "yarn run lint",
       "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
     }
   },
