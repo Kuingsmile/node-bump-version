@@ -15,18 +15,31 @@ const spinner = ora({
     text: ''
 });
 
-const level = {
-    success: 'green',
-    info: 'blue',
-    warn: 'yellow',
-    error: 'red'
+/**
+ * Available log levels for the logger utility
+ */
+const LOG_LEVELS = ['success', 'info', 'warn', 'error'];
+
+const LOG_LEVEL_COLORS = {
+    success: chalk.green,
+    info: chalk.blue,
+    warn: chalk.yellow,
+    error: chalk.red,
 };
-const logger = (msg, type) => {
-    let log = chalk[level[type]](`[Bump ${type.toUpperCase()}]: `);
-    log += msg;
+const isValidLogLevel = (level) => {
+    return LOG_LEVELS.includes(level);
+};
+const logger = (message, logLevel) => {
+    // Validate log level using type-safe validation
+    if (!isValidLogLevel(logLevel)) {
+        throw new Error(`Invalid log level: ${logLevel}. Valid levels are: ${LOG_LEVELS.join(', ')}`);
+    }
+    const colorFunction = LOG_LEVEL_COLORS[logLevel];
+    const prefix = colorFunction(`[Bump ${logLevel.toUpperCase()}]: `);
+    const formattedMessage = `${prefix}${message}`;
     spinner.clear();
     spinner.frame();
-    console.log(log);
+    console.log(formattedMessage);
 };
 
 const checkFileAndGetPath = (argv, files) => {
@@ -450,7 +463,7 @@ const commit = async (argv, newVersion) => {
     return await execCommand(argv, `git commit ${changedFilesStr} -m "${releaseMsg}"`);
 };
 
-const tag = (argv, newVersion) => {
+const tag = async (argv, newVersion) => {
     if (argv.dry) {
         return Promise.resolve();
     }
@@ -461,13 +474,11 @@ const tag = (argv, newVersion) => {
     else {
         flow = execCommand(argv, `git tag -a v${newVersion} -m v${newVersion}`);
     }
-    return flow
-        .then(async () => {
-        if (argv.push) {
-            await execCommand(argv, 'git push --follow-tags origin master');
-        }
-        return Promise.resolve();
-    });
+    await flow;
+    if (argv.push) {
+        await execCommand(argv, 'git push --follow-tags origin master');
+    }
+    return await Promise.resolve();
 };
 
 const mainLifeCycle = async (argv, _currentVersion, newVersion) => {
