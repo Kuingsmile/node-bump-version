@@ -1,6 +1,6 @@
-import exec from './exec.js';
-import { BumpVersionArgs } from './types/index.js';
-import { checkFileAndGetPath } from './utils.js';
+import exec from './exec';
+import { BumpVersionArgs } from './types/index';
+import { checkFileAndGetPath } from './utils';
 
 const commit = async (argv: BumpVersionArgs, newVersion: string): Promise<string | void> => {
   const changedFiles = [

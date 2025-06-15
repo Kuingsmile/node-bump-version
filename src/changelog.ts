@@ -2,8 +2,8 @@ import * as fs from 'node:fs'
 
 import { ConventionalChangelog } from 'conventional-changelog'
 
-import conventionalChangelogNode from './conventional-changelog-node/index.js'
-import { BumpVersionArgs } from './types/index.js'
+import conventionalChangelogNode from './conventional-changelog-node/index'
+import { BumpVersionArgs } from './types/index'
 
 const changelog = async (argv: BumpVersionArgs, newVersion: string): Promise<void> => {
   if (argv.changelog === false) {

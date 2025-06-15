@@ -1,5 +1,5 @@
 import exec from './exec.js';
-import { BumpVersionArgs } from './types/index.js';
+import { BumpVersionArgs } from './types/index';
 
 const tag = async (argv: BumpVersionArgs, newVersion: string): Promise<string | void> => {
   if (argv.dry) {

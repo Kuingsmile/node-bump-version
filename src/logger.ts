@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 
-import ora from './ora.js';
-import { LOG_LEVELS,type LogLevel } from './types/index.js';
+import ora from './ora';
+import { LOG_LEVELS,type LogLevel } from './types/index';
 
 
 const LOG_LEVEL_COLORS = {

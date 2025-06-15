@@ -1,5 +1,3 @@
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 // Inline templates to avoid path resolution issues
 const TEMPLATES = {

@@ -1,4 +1,4 @@
-import parserOpts from './parser-opts.js'
+import parserOpts from './parser-opts'
 
 export interface RecommendedBumpOpts {
   parserOpts: typeof parserOpts

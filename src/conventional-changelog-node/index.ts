@@ -1,7 +1,7 @@
-import conventionalChangelog from './conventional-changelog.js'
-import recommendedBumpOpts from './conventional-recommended-bump.js'
-import parserOpts from './parser-opts.js'
-import writerOpts from './writer-opts.js'
+import conventionalChangelog from './conventional-changelog'
+import recommendedBumpOpts from './conventional-recommended-bump'
+import parserOpts from './parser-opts'
+import writerOpts from './writer-opts'
 
 const conventionalChangelogNode = Promise.all([conventionalChangelog, parserOpts, recommendedBumpOpts, writerOpts])
   .then(([conventionalChangelog, parserOpts, recommendedBumpOpts, writerOpts]) => {

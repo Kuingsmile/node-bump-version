@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-import { BumpVersionArgs } from './types/index.js';
+import { BumpVersionArgs } from './types/index';
 
 export const checkFileAndGetPath = (argv: BumpVersionArgs, files: string[]): string[] => {
   return files.map((item: string) => {

@@ -1,9 +1,9 @@
-import bumpVersion from './bumpVersion.js';
-import changelog from './changelog.js';
-import commit from './commit.js';
-import spinner from './ora.js';
-import tag from './tag.js';
-import { BumpVersionArgs } from './types/index.js';
+import bumpVersion from './bumpVersion';
+import changelog from './changelog';
+import commit from './commit';
+import spinner from './ora';
+import tag from './tag';
+import { BumpVersionArgs } from './types/index';
 
 const mainLifeCycle = async (argv: BumpVersionArgs, _currentVersion: string, newVersion: string): Promise<void> => {
   spinner.start();

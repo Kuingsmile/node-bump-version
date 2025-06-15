@@ -1,5 +1,5 @@
-import parserOpts from './parser-opts.js'
-import writerOpts from './writer-opts.js'
+import parserOpts from './parser-opts'
+import writerOpts from './writer-opts'
 
 export interface ConventionalChangelog {
   parserOpts: typeof parserOpts

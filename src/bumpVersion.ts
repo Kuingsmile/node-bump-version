@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 
-import { BumpVersionArgs, PackageJson } from './types/index.js';
-import { checkFileAndGetPath } from './utils.js';
+import { BumpVersionArgs, PackageJson } from './types/index';
+import { checkFileAndGetPath } from './utils';
 
 const bumpVersion = (argv: BumpVersionArgs, version: string): Promise<void> => {
   if (argv.dry === false) {

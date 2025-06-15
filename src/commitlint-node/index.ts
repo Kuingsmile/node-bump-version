@@ -1,4 +1,4 @@
-import commitTypes from './types.js'
+import commitTypes from './types'
 
 export default {
   parserPreset: '../conventional-changelog-node/parser-opts.js',
