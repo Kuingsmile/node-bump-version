@@ -1,18 +1,20 @@
-import * as fs from 'node:fs';
-import * as path from 'node:path';
+import * as fs from 'node:fs'
+import * as path from 'node:path'
 
-import { BumpVersionArgs } from './types/index';
+import { BumpVersionArgs } from './types/index'
 
 export const checkFileAndGetPath = (argv: BumpVersionArgs, files: string[]): string[] => {
-  return files.map((item: string) => {
-    if (path.isAbsolute(item)) {
-      return item;
-    }
-    return path.join(argv.path || './', item);
-  }).filter((item: string) => {
-    return fs.existsSync(item);
-  });
-};
+  return files
+    .map((item: string) => {
+      if (path.isAbsolute(item)) {
+        return item
+      }
+      return path.join(argv.path || './', item)
+    })
+    .filter((item: string) => {
+      return fs.existsSync(item)
+    })
+}
 
 export const helperMsg = `
 BumpVersion -- By Kuingsmile
@@ -49,4 +51,4 @@ Options
 
   --no-changelog                Changelog won't be created
                                 Default: changelog will be created
-`;
+`

@@ -6,11 +6,7 @@ export interface ParserOpts {
 
 const parserOpts: ParserOpts = {
   headerPattern: /^(:.*: \w*)(?:\((.*)\))?: (.*)$/,
-  headerCorrespondence: [
-    'type',
-    'scope',
-    'subject'
-  ],
+  headerCorrespondence: ['type', 'scope', 'subject'],
   noteKeywords: ['BREAKING CHANGE']
 }
 

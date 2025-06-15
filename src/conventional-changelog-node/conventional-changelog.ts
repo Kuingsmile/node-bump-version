@@ -6,9 +6,8 @@ export interface ConventionalChangelog {
   writerOpts: Awaited<typeof writerOpts>
 }
 
-const conventionalChangelog = Promise.all([parserOpts, writerOpts])
-  .then(([parserOpts, writerOpts]) => {
-    return { parserOpts, writerOpts }
-  })
+const conventionalChangelog = Promise.all([parserOpts, writerOpts]).then(([parserOpts, writerOpts]) => {
+  return { parserOpts, writerOpts }
+})
 
 export default conventionalChangelog

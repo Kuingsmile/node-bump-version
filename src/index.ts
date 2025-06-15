@@ -1,10 +1,10 @@
-export { default as bumpVersion } from './bumpVersion';
-export { default as changelog } from './changelog';
-export { default as commit } from './commit';
-export { default as exec } from './exec';
-export { default as logger } from './logger';
-export { default as mainLifeCycle } from './mainLifeCycle';
-export { default as ora } from './ora';
-export { default as tag } from './tag';
-export * from './types/index';
-export * from './utils';
+export { default as bumpVersion } from './bumpVersion'
+export { default as changelog } from './changelog'
+export { default as commit } from './commit'
+export { default as exec } from './exec'
+export { default as logger } from './logger'
+export { default as mainLifeCycle } from './mainLifeCycle'
+export { default as ora } from './ora'
+export { default as tag } from './tag'
+export * from './types/index'
+export * from './utils'

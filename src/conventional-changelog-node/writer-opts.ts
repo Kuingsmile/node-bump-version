@@ -1,4 +1,3 @@
-
 // Inline templates to avoid path resolution issues
 const TEMPLATES = {
   main: `{{> header}}
@@ -217,9 +216,7 @@ async function getWriterOpts(): Promise<WriterOpts> {
       }
 
       if (typeof commit.subject === 'string') {
-        let url = context.repository
-          ? `${context.host}/${context.owner}/${context.repository}`
-          : context.repoUrl
+        let url = context.repository ? `${context.host}/${context.owner}/${context.repository}` : context.repoUrl
         if (url) {
           url = `${url}/issues/`
           // Issue URLs.
@@ -255,7 +252,8 @@ async function getWriterOpts(): Promise<WriterOpts> {
     commitGroupsSort: compareTitleFunc,
     commitsSort: ['scope', 'subject'],
     noteGroupsSort: 'title',
-    notesSort: compareFunc  }
+    notesSort: compareFunc
+  }
 
   writerOpts.mainTemplate = TEMPLATES.main
   writerOpts.headerPartial = TEMPLATES.header

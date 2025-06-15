@@ -11,7 +11,7 @@ export interface RecommendedBumpOpts {
 const recommendedBumpOpts: RecommendedBumpOpts = {
   parserOpts,
 
-  whatBump: (commits) => {
+  whatBump: commits => {
     let level = 2
     let breakings = 0
     let features = 0
@@ -30,9 +30,10 @@ const recommendedBumpOpts: RecommendedBumpOpts = {
 
     return {
       level,
-      reason: breakings === 1
-        ? `There is ${breakings} BREAKING CHANGE and ${features} features`
-        : `There are ${breakings} BREAKING CHANGES and ${features} features`
+      reason:
+        breakings === 1
+          ? `There is ${breakings} BREAKING CHANGE and ${features} features`
+          : `There are ${breakings} BREAKING CHANGES and ${features} features`
     }
   }
 }

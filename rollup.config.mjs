@@ -86,7 +86,7 @@ export default [
         declaration: false
       })
     ]
-  },  // Conventional changelog config build
+  }, // Conventional changelog config build
   {
     input: 'src/conventional-changelog-node/index.ts',
     output: {

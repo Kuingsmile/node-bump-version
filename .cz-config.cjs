@@ -62,11 +62,9 @@ module.exports = {
     // used if allowCustomScopes is true
     customScope: 'Denote the SCOPE of this change:',
     subject: '[subject] Write a SHORT, IMPERATIVE tense description of the change:\n',
-    body:
-      '[body] Provide a LONGER description of the change (optional). Use "|" to break new line:\n',
+    body: '[body] Provide a LONGER description of the change (optional). Use "|" to break new line:\n',
     breaking: 'List any BREAKING CHANGES (optional):\n',
-    footer:
-      '[footer] List any ISSUES CLOSED by this change (optional). E.g.: #31, #34:\n',
+    footer: '[footer] List any ISSUES CLOSED by this change (optional). E.g.: #31, #34:\n',
     confirmCommit: 'Are you sure you want to proceed with the commit above?'
   },
 

@@ -1,7 +1,7 @@
-import { exec } from 'node:child_process';
+import { exec } from 'node:child_process'
 
-import logger from './logger';
-import { BumpVersionArgs } from './types/index';
+import logger from './logger'
+import { BumpVersionArgs } from './types/index'
 
 const execCommand = (argv: BumpVersionArgs, cmd: string): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -10,14 +10,14 @@ const execCommand = (argv: BumpVersionArgs, cmd: string): Promise<string> => {
       // If exec returns content in stderr, but no error, print it as a warning
       // If exec returns an error, print it and exit with return code 1
       if (err) {
-        logger(stderr || err.message, 'error');
-        return reject(err);
+        logger(stderr || err.message, 'error')
+        return reject(err)
       } else if (stderr) {
-        logger(stderr, 'warn');
+        logger(stderr, 'warn')
       }
-      return resolve(stdout);
-    });
-  });
-};
+      return resolve(stdout)
+    })
+  })
+}
 
-export default execCommand;
+export default execCommand
