@@ -1,5 +1,7 @@
 node_modules/
 test/
+scripts/
+.husky/
 yarn-error.log
 package-lock.json
 tsconfig.json

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync, spawn, spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import test from 'node:test'
@@ -112,6 +112,47 @@ test('commitlint accepts the custom convention and rejects invalid messages', ()
   const result = spawnSync(process.execPath, [command], { cwd: project, input: 'invalid message\n', encoding: 'utf8' })
   assert.notEqual(result.status, 0)
   assert.match(result.stdout + result.stderr, /type-empty/)
+})
+
+test('Husky runs pre-commit and enforces commit messages through Git', t => {
+  const cwd = fixture(t)
+  const pkg = JSON.parse(readFileSync(join(cwd, 'package.json'), 'utf8'))
+  pkg.scripts = {
+    lint: 'node -e "require(\'node:fs\').writeFileSync(\'.pre-commit-ran\', \'\')"'
+  }
+  pkg.commitlint = { extends: [join(project, 'dist/commitlint-node/index.js')] }
+  writeFileSync(join(cwd, 'package.json'), JSON.stringify(pkg, null, 2) + '\n')
+  symlinkSync(join(project, 'node_modules'), join(cwd, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir')
+  mkdirSync(join(cwd, '.husky'))
+  for (const hook of ['pre-commit', 'commit-msg']) {
+    copyFileSync(join(project, '.husky', hook), join(cwd, '.husky', hook))
+  }
+  const env = { ...process.env, HUSKY: '1', XDG_CONFIG_HOME: join(cwd, '.config') }
+  execFileSync(process.execPath, [join(project, 'node_modules/husky/bin.js')], { cwd, env, stdio: 'pipe' })
+  assert.equal(git(cwd, 'config', 'core.hooksPath'), '.husky/_')
+  const runGit = (...args) => spawnSync('git', args, { cwd, env, encoding: 'utf8', timeout: 30000 })
+  const head = git(cwd, 'rev-parse', 'HEAD')
+
+  const invalid = runGit('commit', '--allow-empty', '-m', 'invalid message')
+  assert.equal(invalid.status, 1, invalid.stdout + invalid.stderr)
+  assert.match(invalid.stdout + invalid.stderr, /type-empty/)
+  assert.equal(git(cwd, 'rev-parse', 'HEAD'), head)
+  assert.ok(existsSync(join(cwd, '.pre-commit-ran')), 'Git must also execute the migrated pre-commit hook')
+
+  for (const message of [':bug: Fix(core): handle input', ':tada: Release: v1.1.0']) {
+    const valid = runGit('commit', '--allow-empty', '-m', message)
+    assert.equal(valid.status, 0, valid.stdout + valid.stderr)
+    assert.equal(git(cwd, 'log', '-1', '--format=%s'), message)
+  }
+
+  const messageFile = join(cwd, '.git', 'commit message.txt')
+  writeFileSync(messageFile, ':bug: Fix(core): support paths with spaces\n')
+  const spacedPath = runGit('hook', 'run', 'commit-msg', '--', messageFile)
+  assert.equal(spacedPath.status, 0, spacedPath.stdout + spacedPath.stderr)
+  writeFileSync(messageFile, 'invalid message\n')
+  const invalidSpacedPath = runGit('hook', 'run', 'commit-msg', '--', messageFile)
+  assert.equal(invalidSpacedPath.status, 1, invalidSpacedPath.stdout + invalidSpacedPath.stderr)
+  assert.match(invalidSpacedPath.stdout + invalidSpacedPath.stderr, /type-empty/)
 })
 
 test('dry release generates the custom changelog without changing files, commits or tags', async t => {

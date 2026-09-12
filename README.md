@@ -9,21 +9,16 @@ It's now only available for Node.js projects. Thanks [@picgo/bump-version](https
 Requires **Node.js 22.13.0 or newer on the 22.x line, or Node.js 24+** (`^22.13.0 || >=24.0.0`).
 
 ```bash
-npm install -D  node-bump-version
+npm install -D node-bump-version husky@^9 @commitlint/cli
 
 #or
 
-yarn add -D  node-bump-version
+yarn add -D node-bump-version husky@^9 @commitlint/cli
 ```
 
 Also, add the following data at the top level in your `package.json` to properly config `bump-version` (replace old `config` if you have already configured `commitizen` or `cz-customizable` before):
 
 ```json
-"husky": {
-  "hooks": {
-    "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
-  }
-},
 "config": {
   "commitizen": {
     "path": "./node_modules/cz-customizable"
@@ -41,10 +36,31 @@ And then add the following (inside the braces) to the `scripts` field of your pa
 
 ```json
 "scripts": {
+  "prepare": "husky",
   "cz": "git-cz",
   "release": "bump-version"
 }
 ```
+
+If you already have a `prepare` script, append `&& husky` to it.
+
+Create `.husky/commit-msg` with the following contents (save it as UTF-8 with LF line endings, including on Windows):
+
+```sh
+npx --no -- commitlint --edit "$1"
+```
+
+Run the setup once from your project's Git root:
+
+```bash
+npm run prepare
+# or
+yarn run prepare
+```
+
+Commit `.husky/commit-msg` with your package configuration so other contributors receive the hook. npm and Yarn 1 run `prepare` on subsequent installs; with Yarn 2+, run `yarn run prepare` explicitly after installing.
+
+When upgrading from Husky 4, remove the old top-level `husky` configuration and move any other hooks into matching files under `.husky/`. Husky 9 uses Git's positional arguments such as `$1` for the commit message file. See the [Husky migration guide](https://typicode.github.io/husky/migrate-from-v4.html).
 
 Then you can use `npm run cz` for committing standard message and use `npm run release` to bump version & auto generate changelog in your project!
 
@@ -258,12 +274,15 @@ Available branches:
 
 ```bash
 yarn install --frozen-lockfile
+yarn build
 yarn lint:check
 yarn typecheck
 yarn test
 ```
 
-`yarn test` builds the package and tests the CLI, commitlint configuration, changelog generation, dry runs, release commits, and tags in temporary Git repositories. Git must be installed.
+This repository uses Yarn 1. Installing dependencies activates the Husky 9 hooks. Run `yarn build` before your first commit because the local commitlint configuration loads from `dist/`. The pre-commit hook runs `yarn run lint`, and the commit-msg hook validates the message with commitlint.
+
+`yarn test` builds the package and tests the CLI, commitlint configuration, Git hooks, changelog generation, dry runs, release commits, and tags in temporary Git repositories. Git must be installed.
 
 TypeScript is kept at 6.0.3, the latest stable version supported by the current `typescript-eslint` peer range (`>=4.8.4 <6.1.0`).
 
