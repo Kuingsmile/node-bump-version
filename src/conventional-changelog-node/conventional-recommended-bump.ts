@@ -33,9 +33,9 @@ const recommendedBumpOpts: RecommendedBumpOpts = {
       reason:
         breakings === 1
           ? `There is ${breakings} BREAKING CHANGE and ${features} features`
-          : `There are ${breakings} BREAKING CHANGES and ${features} features`
+          : `There are ${breakings} BREAKING CHANGES and ${features} features`,
     }
-  }
+  },
 }
 
 export default recommendedBumpOpts

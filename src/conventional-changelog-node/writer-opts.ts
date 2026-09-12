@@ -17,14 +17,21 @@ const repositoryUrl = (context: Context): string =>
 const templates: Pick<WriterOpts, 'template' | 'headerPartial' | 'commitPartial' | 'footerPartial'> = {
   template: context => {
     const groups = (context.commitGroups || []).map(group =>
-      [group.title && `### ${group.title}`, group.commits.map(commit => `* ${context.commitPartial(context, commit)}`).join('\n')]
+      [
+        group.title && `### ${group.title}`,
+        group.commits.map(commit => `* ${context.commitPartial(context, commit)}`).join('\n'),
+      ]
         .filter(Boolean)
-        .join('\n\n')
+        .join('\n\n'),
     )
-    return [context.headerPartial(context), ...groups, context.footerPartial(context)].filter(Boolean).join('\n\n') + '\n\n'
+    return (
+      [context.headerPartial(context), ...groups, context.footerPartial(context)].filter(Boolean).join('\n\n') + '\n\n'
+    )
   },
   headerPartial: ({ isPatch, version, title, date }) =>
-    [`${isPatch ? '##' : '#'} :tada: ${version || ''}`, title && `"${title}"`, date && `(${date})`].filter(Boolean).join(' '),
+    [`${isPatch ? '##' : '#'} :tada: ${version || ''}`, title && `"${title}"`, date && `(${date})`]
+      .filter(Boolean)
+      .join(' '),
   commitPartial: (context, commit: Commit) => {
     const subject = `${commit.scope ? `**${commit.scope}:** ` : ''}${commit.subject || commit.header || ''}`
     const hash = commit.hash
@@ -34,20 +41,24 @@ const templates: Pick<WriterOpts, 'template' | 'headerPartial' | 'commitPartial'
       : ''
     const references = (commit.references || []).map(reference => {
       const label = `${reference.owner ? `${reference.owner}/` : ''}${reference.repository || ''}#${reference.issue}`
-      const repo = context.repository && reference.repository
-        ? [context.host, reference.owner, reference.repository].filter(Boolean).join('/')
-        : repositoryUrl(context)
+      const repo =
+        context.repository && reference.repository
+          ? [context.host, reference.owner, reference.repository].filter(Boolean).join('/')
+          : repositoryUrl(context)
       return context.linkReferences ? `[${label}](${repo}/${context.issue}/${reference.issue})` : label
     })
     return [subject, hash].filter(Boolean).join(' ') + (references.length ? `, closes ${references.join(' ')}` : '')
   },
-  footerPartial: context => (context.noteGroups || []).map(group => {
-    const notes = group.notes.map(note => {
-      const { commit } = note as typeof note & { commit?: Commit }
-      return `* ${commit?.scope ? `**${commit.scope}:** ` : ''}${note.text}`
-    })
-    return `### ${group.title}\n\n${notes.join('\n')}`
-  }).join('\n\n')
+  footerPartial: context =>
+    (context.noteGroups || [])
+      .map(group => {
+        const notes = group.notes.map(note => {
+          const { commit } = note as typeof note & { commit?: Commit }
+          return `* ${commit?.scope ? `**${commit.scope}:** ` : ''}${note.text}`
+        })
+        return `### ${group.title}\n\n${notes.join('\n')}`
+      })
+      .join('\n\n'),
 }
 
 const compareFunc = (a: any, b: any): number => {
@@ -62,7 +73,7 @@ const compareTitleFunc = (a: any, b: any): number => {
   const sortMap: Record<string, number> = {
     Features: 10,
     'Bug Fixes': 9,
-    'BREAKING CHANGES': 8
+    'BREAKING CHANGES': 8,
   }
   const typeA = a.title.match(headerPattern)?.[2]
   const typeB = b.title.match(headerPattern)?.[2]
@@ -158,7 +169,7 @@ async function getWriterOpts(): Promise<WriterOpts> {
     commitsSort: (a: Commit, b: Commit) =>
       (a.scope || '').localeCompare(b.scope || '') || (a.subject || '').localeCompare(b.subject || ''),
     noteGroupsSort: 'title',
-    notesSort: compareFunc
+    notesSort: compareFunc,
   }
 
   return writerOpts

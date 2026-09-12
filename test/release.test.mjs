@@ -1,6 +1,16 @@
 import assert from 'node:assert/strict'
 import { execFileSync, spawn, spawnSync } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import test from 'node:test'
@@ -31,10 +41,13 @@ function fixture(t) {
   const pkg = {
     name: 'release-fixture',
     version: '1.0.0',
-    repository: 'https://github.com/example/release-fixture.git'
+    repository: 'https://github.com/example/release-fixture.git',
   }
   writeFileSync(join(cwd, 'package.json'), JSON.stringify(pkg, null, 2) + '\n')
-  writeFileSync(join(cwd, 'package-lock.json'), JSON.stringify({ name: pkg.name, version: pkg.version, lockfileVersion: 1 }) + '\n')
+  writeFileSync(
+    join(cwd, 'package-lock.json'),
+    JSON.stringify({ name: pkg.name, version: pkg.version, lockfileVersion: 1 }) + '\n',
+  )
   writeFileSync(join(cwd, 'CHANGELOG.md'), '# Previous release\n')
   git(cwd, 'init', '--initial-branch=main')
   git(cwd, 'config', 'user.name', 'Release Test')
@@ -46,7 +59,15 @@ function fixture(t) {
   git(cwd, 'add', '.')
   git(cwd, 'commit', '-m', ':pushpin: Init: initial release')
   git(cwd, 'tag', 'v1.0.0')
-  git(cwd, 'commit', '--allow-empty', '-m', ':sparkles: Feature(core): add a feature #42', '-m', 'BREAKING CHANGE: change the fixture API')
+  git(
+    cwd,
+    'commit',
+    '--allow-empty',
+    '-m',
+    ':sparkles: Feature(core): add a feature #42',
+    '-m',
+    'BREAKING CHANGE: change the fixture API',
+  )
   git(cwd, 'commit', '--allow-empty', '-m', ':bug: Fix(core): handle missing input')
   return cwd
 }
@@ -118,11 +139,15 @@ test('Husky runs pre-commit and enforces commit messages through Git', t => {
   const cwd = fixture(t)
   const pkg = JSON.parse(readFileSync(join(cwd, 'package.json'), 'utf8'))
   pkg.scripts = {
-    lint: 'node -e "require(\'node:fs\').writeFileSync(\'.pre-commit-ran\', \'\')"'
+    lint: "node -e \"require('node:fs').writeFileSync('.pre-commit-ran', '')\"",
   }
   pkg.commitlint = { extends: [join(project, 'dist/commitlint-node/index.js')] }
   writeFileSync(join(cwd, 'package.json'), JSON.stringify(pkg, null, 2) + '\n')
-  symlinkSync(join(project, 'node_modules'), join(cwd, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir')
+  symlinkSync(
+    join(project, 'node_modules'),
+    join(cwd, 'node_modules'),
+    process.platform === 'win32' ? 'junction' : 'dir',
+  )
   mkdirSync(join(cwd, '.husky'))
   for (const hook of ['pre-commit', 'commit-msg']) {
     copyFileSync(join(project, '.husky', hook), join(cwd, '.husky', hook))
@@ -195,9 +220,7 @@ test('release updates versions and changelog, commits the files and creates an a
 
 test('interactive CLI accepts the proposed version in dry mode', async t => {
   const cwd = fixture(t)
-  const output = await runCli(t, cwd, ['--dry', '--type', 'major'], [
-    { prompt: 'is it right?', input: 'y\n' }
-  ])
+  const output = await runCli(t, cwd, ['--dry', '--type', 'major'], [{ prompt: 'is it right?', input: 'y\n' }])
   assertChangelog(output, '2.0.0')
   assert.equal(git(cwd, 'status', '--porcelain'), '')
   assert.equal(git(cwd, 'tag', '--list'), 'v1.0.0')
@@ -205,19 +228,22 @@ test('interactive CLI accepts the proposed version in dry mode', async t => {
 
 test('interactive CLI can choose an alternative version', async t => {
   const cwd = fixture(t)
-  const output = await runCli(t, cwd, ['--dry'], [
-    { prompt: 'is it right?', input: 'n\n' },
-    { prompt: 'Which version would you like to bump it?', input: '\n' }
-  ])
+  const output = await runCli(
+    t,
+    cwd,
+    ['--dry'],
+    [
+      { prompt: 'is it right?', input: 'n\n' },
+      { prompt: 'Which version would you like to bump it?', input: '\n' },
+    ],
+  )
   assertChangelog(output, '2.0.0')
   assert.equal(git(cwd, 'status', '--porcelain'), '')
 })
 
 test('interactive CLI respects --no-changelog and --no-tag', async t => {
   const cwd = fixture(t)
-  await runCli(t, cwd, ['--no-changelog', '--no-tag'], [
-    { prompt: 'is it right?', input: 'y\n' }
-  ])
+  await runCli(t, cwd, ['--no-changelog', '--no-tag'], [{ prompt: 'is it right?', input: 'y\n' }])
   assert.equal(JSON.parse(readFileSync(join(cwd, 'package.json'), 'utf8')).version, '1.0.1')
   assert.equal(readFileSync(join(cwd, 'CHANGELOG.md'), 'utf8'), '# Previous release\n')
   assert.equal(git(cwd, 'log', '-1', '--format=%s'), ':tada: Release: v1.0.1')

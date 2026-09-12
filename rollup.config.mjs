@@ -19,7 +19,7 @@ const external = [
   'ora',
   'semver',
   'conventional-changelog',
-  '@commitlint/cli'
+  '@commitlint/cli',
 ]
 
 export default [
@@ -29,20 +29,20 @@ export default [
     output: {
       file: 'dist/index.js',
       format: 'es',
-      sourcemap: true
+      sourcemap: true,
     },
     external,
     plugins: [
       nodeResolve({
-        preferBuiltins: true
+        preferBuiltins: true,
       }),
       commonjs(),
       json(),
       typescript({
         tsconfig: './tsconfig.json',
-        declaration: false
-      })
-    ]
+        declaration: false,
+      }),
+    ],
   },
   // CLI binary build
   {
@@ -51,20 +51,20 @@ export default [
       file: 'dist/bin/bump-version.js',
       format: 'es',
       sourcemap: true,
-      banner: '#!/usr/bin/env node'
+      banner: '#!/usr/bin/env node',
     },
     external,
     plugins: [
       nodeResolve({
-        preferBuiltins: true
+        preferBuiltins: true,
       }),
       commonjs(),
       json(),
       typescript({
         tsconfig: './tsconfig.json',
-        declaration: false
-      })
-    ]
+        declaration: false,
+      }),
+    ],
   },
   // Commitlint config build
   {
@@ -72,45 +72,45 @@ export default [
     output: {
       file: 'dist/commitlint-node/index.js',
       format: 'es',
-      sourcemap: true
+      sourcemap: true,
     },
     external,
     plugins: [
       nodeResolve({
-        preferBuiltins: true
+        preferBuiltins: true,
       }),
       commonjs(),
       json(),
       typescript({
         tsconfig: './tsconfig.json',
-        declaration: false
-      })
-    ]
+        declaration: false,
+      }),
+    ],
   }, // Conventional changelog config build
   {
     input: 'src/conventional-changelog-node/index.ts',
     output: {
       file: 'dist/conventional-changelog-node/index.js',
       format: 'es',
-      sourcemap: true
+      sourcemap: true,
     },
     external,
     plugins: [
       nodeResolve({
-        preferBuiltins: true
+        preferBuiltins: true,
       }),
       commonjs(),
       json(),
       typescript({
         tsconfig: './tsconfig.json',
-        declaration: false
+        declaration: false,
       }),
       copy({
         targets: [
-          { src: 'src/conventional-changelog-node/templates/*', dest: 'dist/conventional-changelog-node/templates' }
-        ]
-      })
-    ]
+          { src: 'src/conventional-changelog-node/templates/*', dest: 'dist/conventional-changelog-node/templates' },
+        ],
+      }),
+    ],
   },
   // Parser opts build
   {
@@ -118,20 +118,20 @@ export default [
     output: {
       file: 'dist/conventional-changelog-node/parser-opts.js',
       format: 'es',
-      sourcemap: true
+      sourcemap: true,
     },
     external,
     plugins: [
       nodeResolve({
-        preferBuiltins: true
+        preferBuiltins: true,
       }),
       commonjs(),
       json(),
       typescript({
         tsconfig: './tsconfig.json',
-        declaration: false
-      })
-    ]
+        declaration: false,
+      }),
+    ],
   },
   // Conventional recommended bump build
   {
@@ -139,20 +139,20 @@ export default [
     output: {
       file: 'dist/conventional-changelog-node/conventional-recommended-bump.js',
       format: 'es',
-      sourcemap: true
+      sourcemap: true,
     },
     external,
     plugins: [
       nodeResolve({
-        preferBuiltins: true
+        preferBuiltins: true,
       }),
       commonjs(),
       json(),
       typescript({
         tsconfig: './tsconfig.json',
-        declaration: false
-      })
-    ]
+        declaration: false,
+      }),
+    ],
   },
   // Writer opts build
   {
@@ -160,20 +160,20 @@ export default [
     output: {
       file: 'dist/conventional-changelog-node/writer-opts.js',
       format: 'es',
-      sourcemap: true
+      sourcemap: true,
     },
     external,
     plugins: [
       nodeResolve({
-        preferBuiltins: true
+        preferBuiltins: true,
       }),
       commonjs(),
       json(),
       typescript({
         tsconfig: './tsconfig.json',
-        declaration: false
-      })
-    ]
+        declaration: false,
+      }),
+    ],
   },
   // Conventional changelog build
   {
@@ -181,28 +181,28 @@ export default [
     output: {
       file: 'dist/conventional-changelog-node/conventional-changelog.js',
       format: 'es',
-      sourcemap: true
+      sourcemap: true,
     },
     external,
     plugins: [
       nodeResolve({
-        preferBuiltins: true
+        preferBuiltins: true,
       }),
       commonjs(),
       json(),
       typescript({
         tsconfig: './tsconfig.json',
-        declaration: false
-      })
-    ]
+        declaration: false,
+      }),
+    ],
   },
   // Type definitions
   {
     input: 'src/index.ts',
     output: {
       file: 'dist/index.d.ts',
-      format: 'es'
+      format: 'es',
     },
-    plugins: [dts()]
-  }
+    plugins: [dts()],
+  },
 ]

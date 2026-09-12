@@ -23,7 +23,7 @@ const changelog = async (argv: BumpVersionArgs, newVersion: string): Promise<voi
     .readPackage(path.resolve(argv.path || './', 'package.json'))
     .config({
       parser: config.parserOpts,
-      writer: config.writerOpts
+      writer: config.writerOpts,
     })
     .context({ version: newVersion })
   let content = ''

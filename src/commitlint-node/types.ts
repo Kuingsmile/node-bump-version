@@ -11,7 +11,7 @@ export const commitTypes = [
   ':white_check_mark: Test',
   ':back: Revert',
   ':tada: Release',
-  ':pushpin: Init'
+  ':pushpin: Init',
 ] as const
 
 export default commitTypes

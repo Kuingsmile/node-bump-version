@@ -33,8 +33,8 @@ let argv: BumpVersionArgs = minimist(process.argv.slice(2), {
     file: 'f', // changelog file,
     path: 'p', // package.json's path
     help: 'h', // help message
-    type: 't' // bump type
-  }
+    type: 't', // bump type
+  },
 })
 
 if (argv.h) {
@@ -58,14 +58,14 @@ function generateReleaseTypes(types: ReleaseType[]): ReleaseChoice[] {
     const version = semver.inc(currentVersion, item, preid || 'alpha')
     return {
       name: `${item} - ${version}`,
-      value: version || ''
+      value: version || '',
     }
   })
 }
 
 const defaultObj = {
   path: process.cwd(),
-  file: 'CHANGELOG.md'
+  file: 'CHANGELOG.md',
 }
 
 argv = _.assign({}, defaultObj, argv)
@@ -74,14 +74,14 @@ let promptList: any[] = [
   {
     type: 'confirm',
     name: 'confirmVersion',
-    message: `The next version is ${nextVersion}, is it right?`
-  }
+    message: `The next version is ${nextVersion}, is it right?`,
+  },
 ]
 
 console.log(
   `
 BumpVersion -- By Kuingsmile
-  `
+  `,
 )
 
 ;(async () => {
@@ -95,8 +95,8 @@ BumpVersion -- By Kuingsmile
         name: 'version',
         message: `The current version is ${currentVersion}\n Which version would you like to bump it?`,
         choices: [...generateReleaseTypes(releaseTypes), new inquirer.Separator(), 'custom version', 'never mind~'],
-        pageSize: 10
-      }
+        pageSize: 10,
+      },
     ]
 
     const answer = await inquirer.prompt(promptList)
@@ -107,8 +107,8 @@ BumpVersion -- By Kuingsmile
         {
           type: 'input',
           name: 'version',
-          message: 'Write down your custom version:'
-        }
+          message: 'Write down your custom version:',
+        },
       ]
 
       const result = await inquirer.prompt(promptList)

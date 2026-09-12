@@ -7,7 +7,7 @@ const LOG_LEVEL_COLORS = {
   success: chalk.green,
   info: chalk.blue,
   warn: chalk.yellow,
-  error: chalk.red
+  error: chalk.red,
 } as const satisfies Record<LogLevel, typeof chalk.green>
 
 export const isValidLogLevel = (level: string): level is LogLevel => {
