@@ -91,10 +91,10 @@ BumpVersion -- By Kuingsmile
   } else {
     promptList = [
       {
-        type: 'list',
+        type: 'select',
         name: 'version',
         message: `The current version is ${currentVersion}\n Which version would you like to bump it?`,
-        choices: [...generateReleaseTypes(releaseTypes), { type: 'separator' }, 'custom version', 'never mind~'],
+        choices: [...generateReleaseTypes(releaseTypes), new inquirer.Separator(), 'custom version', 'never mind~'],
         pageSize: 10
       }
     ]

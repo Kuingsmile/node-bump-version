@@ -1,4 +1,5 @@
 import * as fs from 'node:fs'
+import * as path from 'node:path'
 
 import { ConventionalChangelog } from 'conventional-changelog'
 
@@ -10,7 +11,7 @@ const changelog = async (argv: BumpVersionArgs, newVersion: string): Promise<voi
     return Promise.resolve()
   }
 
-  let oldContent = ''
+  let oldContent: string
 
   try {
     oldContent = fs.readFileSync(argv.file || 'CHANGELOG.md', 'utf8')
@@ -19,16 +20,12 @@ const changelog = async (argv: BumpVersionArgs, newVersion: string): Promise<voi
   }
   const config = await conventionalChangelogNode
   const cc = new ConventionalChangelog(argv.path || './')
-
-  // Use type assertion to bypass the strict type checking
-  cc.config({
-    parserOpts: config.parserOpts,
-    writerOpts: config.writerOpts
-  } as any)
-
-  if (argv.dry) {
-    cc.context({ version: newVersion })
-  }
+    .readPackage(path.resolve(argv.path || './', 'package.json'))
+    .config({
+      parser: config.parserOpts,
+      writer: config.writerOpts
+    })
+    .context({ version: newVersion })
   let content = ''
   const stream = cc.writeStream()
 

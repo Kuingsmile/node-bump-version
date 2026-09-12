@@ -1,151 +1,53 @@
-// Inline templates to avoid path resolution issues
-const TEMPLATES = {
-  main: `{{> header}}
+import type { Preset } from 'conventional-changelog'
 
-{{#each commitGroups}}
+export type WriterOpts = NonNullable<Preset['writer']>
 
-{{#if title}}
-### {{title}}
-
-{{/if}}
-{{#each commits}}
-{{> commit root=@root}}
-{{/each}}
-
-{{/each}}
-{{> footer}}
-
-
-
-`,
-  header: `{{#if isPatch~}}
-  ##
-{{~else~}}
-  #
-{{~/if}} {{#if @root.linkCompare~}}
-:tada: {{version}}
-{{~else}}
-:tada: {{version}}
-{{~/if}}
-{{~#if title}} "{{title}}"
-{{~/if}}
-{{~#if date}} ({{date}})
-{{/if}}
-
-`,
-  commit: `*{{#if scope}} **{{scope}}:**
-{{~/if}} {{#if subject}}
-  {{~subject}}
-{{~else}}
-  {{~header}}
-{{~/if}}
-
-{{~!-- commit link --}} {{#if @root.linkReferences~}}
-  ([{{hash}}](
-  {{~#if @root.repository}}
-    {{~#if @root.host}}
-      {{~@root.host}}/
-    {{~/if}}
-    {{~#if @root.owner}}
-      {{~@root.owner}}/
-    {{~/if}}
-    {{~@root.repository}}
-  {{~else}}
-    {{~@root.repoUrl}}
-  {{~/if}}/
-  {{~@root.commit}}/{{hash}}))
-{{~else}}
-  {{~hash}}
-{{~/if}}
-
-{{~!-- commit references --}}
-{{~#if references~}}
-  , closes
-  {{~#each references}} {{#if @root.linkReferences~}}
-    [
-    {{~#if this.owner}}
-      {{~this.owner}}/
-    {{~/if}}
-    {{~this.repository}}#{{this.issue}}](
-    {{~#if @root.repository}}
-      {{~#if @root.host}}
-        {{~@root.host}}/
-      {{~/if}}
-      {{~#if this.repository}}
-        {{~#if this.owner}}
-          {{~this.owner}}/
-        {{~/if}}
-        {{~this.repository}}
-      {{~else}}
-        {{~#if @root.owner}}
-          {{~@root.owner}}/
-        {{~/if}}
-          {{~@root.repository}}
-        {{~/if}}
-    {{~else}}
-      {{~@root.repoUrl}}
-    {{~/if}}/
-    {{~@root.issue}}/{{this.issue}})
-  {{~else}}
-    {{~#if this.owner}}
-      {{~this.owner}}/
-    {{~/if}}
-    {{~this.repository}}#{{this.issue}}
-  {{~/if}}{{/each}}
-{{~/if}}
-
-
-`,
-  footer: `{{#if noteGroups}}
-{{#each noteGroups}}
-
-### {{title}}
-
-{{#each notes}}
-* {{#if commit.scope}}**{{commit.scope}}:** {{/if}}{{text}}
-{{/each}}
-{{/each}}
-
-{{/if}}
-
-`
+type Commit = Parameters<NonNullable<WriterOpts['transform']>>[0] & {
+  scope?: string | null
+  subject?: string | null
 }
 
-interface Context {
-  repository?: string
-  host?: string
-  owner?: string
-  repoUrl?: string
-}
+type Context = Parameters<NonNullable<WriterOpts['template']>>[0]
 
-interface Note {
-  title: string
-}
+const repositoryUrl = (context: Context): string =>
+  context.repository
+    ? [context.host, context.owner, context.repository].filter(Boolean).join('/')
+    : context.repoUrl || ''
 
-interface Reference {
-  issue: string
-}
-
-interface Commit {
-  notes: Note[]
-  type?: string
-  scope?: string
-  hash?: string
-  subject?: string
-  references: Reference[]
-}
-
-export interface WriterOpts {
-  mainTemplate?: string
-  headerPartial?: string
-  commitPartial?: string
-  footerPartial?: string
-  transform: (commit: Commit, context: Context) => Commit | undefined
-  groupBy: string
-  commitGroupsSort: (a: any, b: any) => number
-  commitsSort: string[]
-  noteGroupsSort: string
-  notesSort: (a: any, b: any) => number
+const templates: Pick<WriterOpts, 'template' | 'headerPartial' | 'commitPartial' | 'footerPartial'> = {
+  template: context => {
+    const groups = (context.commitGroups || []).map(group =>
+      [group.title && `### ${group.title}`, group.commits.map(commit => `* ${context.commitPartial(context, commit)}`).join('\n')]
+        .filter(Boolean)
+        .join('\n\n')
+    )
+    return [context.headerPartial(context), ...groups, context.footerPartial(context)].filter(Boolean).join('\n\n') + '\n\n'
+  },
+  headerPartial: ({ isPatch, version, title, date }) =>
+    [`${isPatch ? '##' : '#'} :tada: ${version || ''}`, title && `"${title}"`, date && `(${date})`].filter(Boolean).join(' '),
+  commitPartial: (context, commit: Commit) => {
+    const subject = `${commit.scope ? `**${commit.scope}:** ` : ''}${commit.subject || commit.header || ''}`
+    const hash = commit.hash
+      ? context.linkReferences
+        ? `([${commit.hash}](${repositoryUrl(context)}/${context.commit}/${commit.hash}))`
+        : commit.hash
+      : ''
+    const references = (commit.references || []).map(reference => {
+      const label = `${reference.owner ? `${reference.owner}/` : ''}${reference.repository || ''}#${reference.issue}`
+      const repo = context.repository && reference.repository
+        ? [context.host, reference.owner, reference.repository].filter(Boolean).join('/')
+        : repositoryUrl(context)
+      return context.linkReferences ? `[${label}](${repo}/${context.issue}/${reference.issue})` : label
+    })
+    return [subject, hash].filter(Boolean).join(' ') + (references.length ? `, closes ${references.join(' ')}` : '')
+  },
+  footerPartial: context => (context.noteGroups || []).map(group => {
+    const notes = group.notes.map(note => {
+      const { commit } = note as typeof note & { commit?: Commit }
+      return `* ${commit?.scope ? `**${commit.scope}:** ` : ''}${note.text}`
+    })
+    return `### ${group.title}\n\n${notes.join('\n')}`
+  }).join('\n\n')
 }
 
 const compareFunc = (a: any, b: any): number => {
@@ -170,7 +72,10 @@ const compareTitleFunc = (a: any, b: any): number => {
 
 async function getWriterOpts(): Promise<WriterOpts> {
   const writerOpts: WriterOpts = {
-    transform: (commit: Commit, context: Context) => {
+    ...templates,
+    transform: (original: Commit, context: Context) => {
+      // The writer passes immutable commits; return changes on a copy.
+      const commit = { ...original, notes: original.notes.map(note => ({ ...note })) }
       let discard = true
       const issues: string[] = []
 
@@ -194,7 +99,7 @@ async function getWriterOpts(): Promise<WriterOpts> {
       } else if (commit.type === ':pushpin: Init') {
         commit.type = ':pushpin: Init'
       } else if (discard) {
-        return
+        return null
       } else if (commit.type === ':arrow_up: Upgrade') {
         commit.type = ':arrow_up: Dependencies Upgrade'
       } else if (commit.type === ':art: Style') {
@@ -204,7 +109,7 @@ async function getWriterOpts(): Promise<WriterOpts> {
       } else if (commit.type === ':white_check_mark: Test') {
         commit.type = ':white_check_mark: Tests'
       } else if (commit.type === ':construction: WIP' || commit.type === ':tada: Release') {
-        return
+        return null
       }
 
       if (commit.scope === '*') {
@@ -238,7 +143,7 @@ async function getWriterOpts(): Promise<WriterOpts> {
       }
 
       // remove references that already appear in the subject
-      commit.references = commit.references.filter(reference => {
+      commit.references = (commit.references || []).filter(reference => {
         if (issues.indexOf(reference.issue) === -1) {
           return true
         }
@@ -250,15 +155,11 @@ async function getWriterOpts(): Promise<WriterOpts> {
     },
     groupBy: 'type',
     commitGroupsSort: compareTitleFunc,
-    commitsSort: ['scope', 'subject'],
+    commitsSort: (a: Commit, b: Commit) =>
+      (a.scope || '').localeCompare(b.scope || '') || (a.subject || '').localeCompare(b.subject || ''),
     noteGroupsSort: 'title',
     notesSort: compareFunc
   }
-
-  writerOpts.mainTemplate = TEMPLATES.main
-  writerOpts.headerPartial = TEMPLATES.header
-  writerOpts.commitPartial = TEMPLATES.commit
-  writerOpts.footerPartial = TEMPLATES.footer
 
   return writerOpts
 }

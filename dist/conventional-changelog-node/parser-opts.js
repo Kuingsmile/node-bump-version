@@ -1,10 +1,6 @@
 const parserOpts = {
     headerPattern: /^(:.*: \w*)(?:\((.*)\))?: (.*)$/,
-    headerCorrespondence: [
-        'type',
-        'scope',
-        'subject'
-    ],
+    headerCorrespondence: ['type', 'scope', 'subject'],
     noteKeywords: ['BREAKING CHANGE']
 };
 

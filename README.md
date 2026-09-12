@@ -6,6 +6,8 @@ It's now only available for Node.js projects. Thanks [@picgo/bump-version](https
 
 ## Installation
 
+Requires **Node.js 22.13.0 or newer on the 22.x line, or Node.js 24+** (`^22.13.0 || >=24.0.0`).
+
 ```bash
 npm install -D  node-bump-version
 
@@ -251,6 +253,19 @@ Available branches:
 - `hot-fix` for fixing the bug in master **[optional]**
 - `feat-*` for developing a new feature
 - `fix-*` for fixing a bug in dev branch
+
+## Development
+
+```bash
+yarn install --frozen-lockfile
+yarn lint:check
+yarn typecheck
+yarn test
+```
+
+`yarn test` builds the package and tests the CLI, commitlint configuration, changelog generation, dry runs, release commits, and tags in temporary Git repositories. Git must be installed.
+
+TypeScript is kept at 6.0.3, the latest stable version supported by the current `typescript-eslint` peer range (`>=4.8.4 <6.1.0`).
 
 ## License
 

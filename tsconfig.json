@@ -12,6 +12,7 @@
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
+    "types": ["node"],
     "typeRoots": ["./node_modules/@types", "./src/types"]
   },  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.js"]

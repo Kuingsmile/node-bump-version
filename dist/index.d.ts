@@ -40,7 +40,7 @@ interface PackageJson {
  * Available log levels for the logger utility
  */
 declare const LOG_LEVELS: readonly ["success", "info", "warn", "error"];
-type LogLevel = typeof LOG_LEVELS[number];
+type LogLevel = (typeof LOG_LEVELS)[number];
 type ReleaseType = 'major' | 'minor' | 'patch' | 'premajor' | 'preminor' | 'prepatch' | 'prerelease';
 interface ReleaseChoice {
     name: string;

@@ -1,16 +1,12 @@
 const parserOpts = {
     headerPattern: /^(:.*: \w*)(?:\((.*)\))?: (.*)$/,
-    headerCorrespondence: [
-        'type',
-        'scope',
-        'subject'
-    ],
+    headerCorrespondence: ['type', 'scope', 'subject'],
     noteKeywords: ['BREAKING CHANGE']
 };
 
 const recommendedBumpOpts = {
     parserOpts,
-    whatBump: (commits) => {
+    whatBump: commits => {
         let level = 2;
         let breakings = 0;
         let features = 0;

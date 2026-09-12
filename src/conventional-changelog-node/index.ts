@@ -9,7 +9,7 @@ const conventionalChangelogNode = Promise.all([
   recommendedBumpOpts,
   writerOpts
 ]).then(([conventionalChangelog, parserOpts, recommendedBumpOpts, writerOpts]) => {
-  return { conventionalChangelog, parserOpts, recommendedBumpOpts, writerOpts }
+  return { conventionalChangelog, parser: parserOpts, writer: writerOpts, parserOpts, recommendedBumpOpts, writerOpts }
 })
 
 export default conventionalChangelogNode
