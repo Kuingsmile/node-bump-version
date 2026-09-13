@@ -185,6 +185,13 @@ const cases = [
       commitCreated: true,
       properlyForwardedDryIsClean: true,
     },
+    fixed: {
+      documentedUnsafeCommand: false,
+      version: '1.0.0',
+      releaseTagCreated: false,
+      commitCreated: false,
+      properlyForwardedDryIsClean: true,
+    },
     async run() {
       const npm = findNpm()
       const cwd = fixture('npm-dry')
@@ -203,9 +210,11 @@ const cases = [
         git(cwd, 'rev-parse', 'HEAD') === head &&
         git(cwd, 'tag', '--list') === 'v1.0.0'
       assert.ok(properlyForwardedDryIsClean, 'Correctly forwarded dry mode must be a clean control')
-      succeeded(await runNode(cwd, npm, ['run', 'release', '--dry']))
+      const documentedArgs = readFileSync(join(project, 'README.md'), 'utf8').match(/^npm run release (--.*)$/m)?.[1]
+      assert.ok(['--dry', '-- --dry'].includes(documentedArgs), 'The README must document a recognized dry-run command')
+      succeeded(await runNode(cwd, npm, ['run', 'release', ...documentedArgs.split(' ')]))
       return {
-        documentedUnsafeCommand: readFileSync(join(project, 'README.md'), 'utf8').includes('npm run release --dry'),
+        documentedUnsafeCommand: documentedArgs === '--dry',
         version: version(cwd),
         releaseTagCreated: git(cwd, 'tag', '--list', 'v1.0.1') === 'v1.0.1',
         commitCreated: git(cwd, 'rev-parse', 'HEAD') !== head,

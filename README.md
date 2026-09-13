@@ -161,7 +161,10 @@ If you reject the default next version, then you can choose which version you wa
 if you just want to see what the changelog will be created and nothing will be changed:
 
 ```bash
-npm run release --dry
+npm run release -- --dry
+
+# In PowerShell, use npm.cmd to preserve the argument separator:
+npm.cmd run release -- --dry
 ```
 
 ## Convention
