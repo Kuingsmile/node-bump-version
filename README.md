@@ -31,6 +31,11 @@ For commitlint, create `commitlint.config.cjs` with `module.exports = { extends:
 The `require.resolve` is needed because commitlint prefixes bare names in its `extends` array.
 Existing documented `dist/*` imports remain available.
 
+Husky, commitlint, Commitizen, and cz-customizable are optional peer integrations.
+They are not installed with the release-only CLI. Existing users of `git-cz` should add
+`commitizen` and `cz-customizable` as development dependencies, or run `init --commit-helper` followed by installation.
+Use `init --hooks` to declare the hook dependencies. Published files are limited to built code/types, preset assets, and documentation.
+
 Requires **Node.js 22.13.0 or newer on the 22.x line, or Node.js 24+** (`^22.13.0 || >=24.0.0`).
 
 ```bash

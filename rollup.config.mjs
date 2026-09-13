@@ -14,8 +14,6 @@ const external = [
   'url',
   'chalk',
   'inquirer',
-  'lodash',
-  'minimist',
   'ora',
   'semver',
   'conventional-changelog',
