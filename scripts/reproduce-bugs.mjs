@@ -260,10 +260,22 @@ const cases = [
     title: 'Invalid release type writes an empty version and tag v',
     correct: 'Invalid --type fails before changing files, commits, or tags.',
     buggy: { exitCode: 0, version: '', invalidTagCreated: true, commitCreated: true },
+    fixed: { exitCode: 1, version: '1.0.0', invalidTagCreated: false, commitCreated: false },
     async run() {
       const cwd = fixture('invalid-type')
       const head = git(cwd, 'rev-parse', 'HEAD')
       const result = await runCli(cwd, ['--type', 'typo', '--no-changelog'])
+      if (result.code === 1) {
+        assert.match(result.output, /Invalid release type/)
+        for (const newVersion of ['', 'not-a-version', '1.0.0', '0.9.0']) {
+          await assert.rejects(
+            api.mainLifeCycle({ _: [], path: cwd, changelog: false }, '1.0.0', newVersion),
+            /version/i,
+          )
+        }
+        await assert.rejects(api.bumpVersion({ _: [], path: cwd }, ''), /version/i)
+        assert.equal(git(cwd, 'status', '--porcelain'), '')
+      }
       return {
         exitCode: result.code,
         version: version(cwd),

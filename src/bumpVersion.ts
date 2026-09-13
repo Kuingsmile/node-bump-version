@@ -1,9 +1,14 @@
 import * as fs from 'node:fs'
 
+import * as semver from 'semver'
+
 import { BumpVersionArgs, PackageJson } from './types/index'
 import { checkFileAndGetPath } from './utils'
 
 const bumpVersion = (argv: BumpVersionArgs, version: string): Promise<void> => {
+  const normalizedVersion = semver.valid(version)
+  if (!normalizedVersion) return Promise.reject(new Error('Invalid release version'))
+  version = normalizedVersion
   let versionFiles = ['package.json', 'package-lock.json']
   versionFiles = checkFileAndGetPath(argv, versionFiles)
 

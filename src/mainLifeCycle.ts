@@ -5,7 +5,12 @@ import spinner from './ora'
 import tag from './tag'
 import { BumpVersionArgs } from './types/index'
 
-const mainLifeCycle = async (argv: BumpVersionArgs, _currentVersion: string, newVersion: string): Promise<void> => {
+const mainLifeCycle = async (argv: BumpVersionArgs, currentVersion: string, newVersion: string): Promise<void> => {
+  const normalizedVersion = semver.valid(newVersion)
+  if (!semver.valid(currentVersion) || !normalizedVersion || !semver.gt(normalizedVersion, currentVersion)) {
+    throw new Error('Release version must be valid and greater than the current version')
+  }
+  newVersion = normalizedVersion
   spinner.start()
 
   try {
@@ -27,3 +32,4 @@ const mainLifeCycle = async (argv: BumpVersionArgs, _currentVersion: string, new
 }
 
 export default mainLifeCycle
+import * as semver from 'semver'

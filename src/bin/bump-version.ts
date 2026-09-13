@@ -42,16 +42,28 @@ if (argv.h) {
   process.exit(0)
 }
 
-const releaseType: ReleaseType = (typeof argv.t === 'string' ? argv.t : 'patch') as ReleaseType
+const releaseTypes: ReleaseType[] = ['major', 'minor', 'patch', 'premajor', 'preminor', 'prepatch', 'prerelease']
+const releaseType = (argv.t === undefined ? 'patch' : argv.t) as ReleaseType
+if (!releaseTypes.includes(releaseType)) {
+  logger('Invalid release type!', 'error')
+  process.exit(1)
+}
 const currentVersion = pkg!.version
 if (currentVersion === undefined) {
   logger('Version field is not found in package.json!', 'error')
   process.exit(0)
 }
+if (!semver.valid(currentVersion)) {
+  logger('Invalid version in package.json!', 'error')
+  process.exit(1)
+}
 
 const preid = argv.a ? 'alpha' : argv.b ? 'beta' : ''
 const nextVersion = semver.inc(currentVersion, releaseType, preid)
-const releaseTypes: ReleaseType[] = ['major', 'minor', 'patch', 'premajor', 'preminor', 'prepatch', 'prerelease']
+if (!nextVersion) {
+  logger('Unable to calculate the next version!', 'error')
+  process.exit(1)
+}
 
 function generateReleaseTypes(types: ReleaseType[]): ReleaseChoice[] {
   return types.map((item: ReleaseType) => {
@@ -87,7 +99,7 @@ BumpVersion -- By Kuingsmile
 ;(async () => {
   const answer = await inquirer.prompt(promptList)
   if ((answer as any).confirmVersion) {
-    await mainLifeCycle(argv, currentVersion, nextVersion || '')
+    await mainLifeCycle(argv, currentVersion, nextVersion)
   } else {
     promptList = [
       {
@@ -112,9 +124,11 @@ BumpVersion -- By Kuingsmile
       ]
 
       const result = await inquirer.prompt(promptList)
-      if (semver.valid((result as any).version) && semver.gte((result as any).version, currentVersion)) {
-        await mainLifeCycle(argv, currentVersion, (result as any).version)
+      const customVersion = semver.valid((result as any).version)
+      if (customVersion && semver.gt(customVersion, currentVersion)) {
+        await mainLifeCycle(argv, currentVersion, customVersion)
       } else {
+        process.exitCode = 1
         return logger('Invalid version!', 'error')
       }
     } else {
