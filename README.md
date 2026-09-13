@@ -131,7 +131,7 @@ Options
 
   -b, --preid-beta              Prerelease id: beta.  Exp. 1.0.0.beta-0
 
-  -d, --dry                     Run bump version without change anything & output the log in console
+  -d, --dry, --dry-run          Preview the release without changing files, commits or tags
 
   -f, --file                    Read and write the CHANGELOG file, relative to package.json's path
                                 Default: CHANGELOG.md
@@ -155,6 +155,9 @@ Options
 ```
 
 Don't know which version should be the next? Never mind:
+
+Unknown options, missing values, and positional arguments are rejected before the release starts.
+Boolean switches take no value: use `--push` or `--no-push`, never `--push false`.
 
 If you reject the default next version, then you can choose which version you want or customize one.
 

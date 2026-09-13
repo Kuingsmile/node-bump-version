@@ -25,7 +25,7 @@ Options
 
   -b, --preid-beta              Prerelease id: beta.  Exp. 1.0.0.beta-0
 
-  -d, --dry                     Run bump version without change anything & output the log in console
+  -d, --dry, --dry-run          Preview the release without changing files, commits or tags
 
   -f, --file                    Read and write the CHANGELOG file, relative to package.json's path
                                 Default: CHANGELOG.md

@@ -2,28 +2,23 @@ import { readFileSync } from 'node:fs'
 import * as path from 'node:path'
 
 import inquirer from 'inquirer'
-import _ from 'lodash'
-import minimist from 'minimist'
 import * as semver from 'semver'
 
+import { parseCliArgs } from '../cli-options.js'
 import logger from '../logger.js'
 import mainLifeCycle from '../mainLifeCycle.js'
 import { BumpVersionArgs, PackageJson, ReleaseChoice, ReleaseType } from '../types/index.js'
 import { helperMsg } from '../utils.js'
 
-let argv: BumpVersionArgs = minimist(process.argv.slice(2), {
-  alias: {
-    'preid-alpha': 'a', // alpha
-    'preid-beta': 'b', // beta
-    dry: 'd', // dry run mode
-    file: 'f', // changelog file,
-    path: 'p', // package.json's path
-    help: 'h', // help message
-    type: 't', // bump type
-  },
-})
+let argv: BumpVersionArgs
+try {
+  argv = { path: process.cwd(), file: 'CHANGELOG.md', ...parseCliArgs(process.argv.slice(2)) }
+} catch (error) {
+  logger(error instanceof Error ? error.message : 'Invalid command-line options', 'error')
+  process.exit(1)
+}
 
-if (argv.h) {
+if (argv.help) {
   console.log(helperMsg)
   process.exit(0)
 }
@@ -42,7 +37,7 @@ if (!pkg || typeof pkg !== 'object' || Array.isArray(pkg)) {
 }
 
 const releaseTypes: ReleaseType[] = ['major', 'minor', 'patch', 'premajor', 'preminor', 'prepatch', 'prerelease']
-const releaseType = (argv.t === undefined ? 'patch' : argv.t) as ReleaseType
+const releaseType = (argv.type === undefined ? 'patch' : argv.type) as ReleaseType
 if (!releaseTypes.includes(releaseType)) {
   logger('Invalid release type!', 'error')
   process.exit(1)
@@ -57,7 +52,7 @@ if (!semver.valid(currentVersion)) {
   process.exit(1)
 }
 
-const preid = argv.a ? 'alpha' : argv.b ? 'beta' : ''
+const preid = argv['preid-alpha'] ? 'alpha' : argv['preid-beta'] ? 'beta' : ''
 const nextVersion = semver.inc(currentVersion, releaseType, preid)
 if (!nextVersion) {
   logger('Unable to calculate the next version!', 'error')
@@ -73,13 +68,6 @@ function generateReleaseTypes(types: ReleaseType[]): ReleaseChoice[] {
     }
   })
 }
-
-const defaultObj = {
-  path: process.cwd(),
-  file: 'CHANGELOG.md',
-}
-
-argv = _.assign({}, defaultObj, argv)
 
 let promptList: any[] = [
   {

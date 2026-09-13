@@ -124,6 +124,23 @@ test('built CLI displays help', () => {
   assert.match(output, /--dry/)
 })
 
+test('CLI rejects unknown options and malformed values before touching files', t => {
+  const cwd = fixture(t)
+  for (const args of [['--dry-rnu'], ['--push', 'false'], ['--dry=false'], ['--path'], ['--file='], ['-a', '-b']]) {
+    const result = spawnSync(process.execPath, [cli, ...args], { cwd, encoding: 'utf8', timeout: 5000 })
+    assert.equal(result.status, 1, result.stdout + result.stderr)
+    assert.doesNotMatch(result.stdout + result.stderr, /is it right/)
+    assert.equal(git(cwd, 'status', '--porcelain'), '')
+  }
+})
+
+test('CLI accepts --dry-run as a safe alias for --dry', async t => {
+  const cwd = fixture(t)
+  await runCli(t, cwd, ['--dry-run'], [{ prompt: 'is it right?', input: 'y\n' }])
+  assert.equal(git(cwd, 'status', '--porcelain'), '')
+  assert.equal(git(cwd, 'tag', '--list'), 'v1.0.0')
+})
+
 test('commitlint accepts the custom convention and rejects invalid messages', () => {
   const command = join(project, 'node_modules/@commitlint/cli/cli.js')
   for (const message of [':sparkles: Feature(core): add a feature', ':tada: Release: v1.1.0']) {
