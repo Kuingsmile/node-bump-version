@@ -242,6 +242,7 @@ const cases = [
     title: 'dry:false tags a package whose version was not bumped',
     correct: 'Explicit dry:false writes and tags package version 1.0.1.',
     buggy: { workingVersion: '1.0.0', taggedVersion: '1.0.0', changelogUpdated: true },
+    fixed: { workingVersion: '1.0.1', taggedVersion: '1.0.1', changelogUpdated: true },
     async run() {
       const cwd = fixture('dry-false')
       process.chdir(cwd)

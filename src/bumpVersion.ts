@@ -4,10 +4,6 @@ import { BumpVersionArgs, PackageJson } from './types/index'
 import { checkFileAndGetPath } from './utils'
 
 const bumpVersion = (argv: BumpVersionArgs, version: string): Promise<void> => {
-  if (argv.dry === false) {
-    return Promise.resolve()
-  }
-
   let versionFiles = ['package.json', 'package-lock.json']
   versionFiles = checkFileAndGetPath(argv, versionFiles)
 
