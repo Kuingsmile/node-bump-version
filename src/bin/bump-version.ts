@@ -12,19 +12,6 @@ import { BumpVersionArgs, PackageJson, ReleaseChoice, ReleaseType } from '../typ
 import { helperMsg } from '../utils.js'
 const require = createRequire(import.meta.url)
 
-let pkg: PackageJson | undefined
-try {
-  pkg = require(path.join(process.cwd(), 'package.json'))
-} catch (e) {
-  logger('package.json not found!', 'error')
-  process.exit(0)
-}
-
-if (!pkg) {
-  logger('package.json not found!', 'error')
-  process.exit(0)
-}
-
 let argv: BumpVersionArgs = minimist(process.argv.slice(2), {
   alias: {
     'preid-alpha': 'a', // alpha
@@ -36,6 +23,19 @@ let argv: BumpVersionArgs = minimist(process.argv.slice(2), {
     type: 't', // bump type
   },
 })
+
+let pkg: PackageJson | undefined
+try {
+  pkg = require(path.resolve(argv.path || process.cwd(), 'package.json'))
+} catch (e) {
+  logger('package.json not found!', 'error')
+  process.exit(0)
+}
+
+if (!pkg) {
+  logger('package.json not found!', 'error')
+  process.exit(0)
+}
 
 if (argv.h) {
   console.log(helperMsg)

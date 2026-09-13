@@ -228,6 +228,7 @@ const cases = [
     title: '--path takes the version from the caller',
     correct: 'Target package 5.0.0 becomes 5.0.1; the caller stays at 1.0.0.',
     buggy: { callerVersion: '1.0.0', targetVersion: '1.0.1' },
+    fixed: { callerVersion: '1.0.0', targetVersion: '5.0.1' },
     async run() {
       const caller = fixture('wrong-version-caller')
       const target = fixture('wrong-version-target', '5.0.0')
