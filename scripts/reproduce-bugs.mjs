@@ -465,6 +465,7 @@ const cases = [
     title: 'Help requires a package and startup errors exit successfully',
     correct: 'Help works without a package; missing and malformed packages fail with a nonzero exit.',
     buggy: { helpExitCode: 0, helpMissing: true, missingPackageExitCode: 0, malformedPackageExitCode: 0 },
+    fixed: { helpExitCode: 0, helpMissing: false, missingPackageExitCode: 1, malformedPackageExitCode: 1 },
     async run() {
       const cwd = join(root, 'empty')
       mkdirSync(cwd)
@@ -472,6 +473,14 @@ const cases = [
       const missing = await runCli(cwd, [], false)
       writeFileSync(join(cwd, 'package.json'), '{ invalid fixture json')
       const malformed = await runCli(cwd, [], false)
+      if (help.output.includes('Usage')) {
+        assert.match(malformed.output, /Invalid JSON/)
+        for (const pkg of [null, [], { name: 'fixture' }, { name: 'fixture', version: 'invalid' }]) {
+          writeJson(join(cwd, 'package.json'), pkg)
+          assert.equal((await runCli(cwd, [], false)).code, 1)
+          assert.deepEqual(readJson(join(cwd, 'package.json')), pkg)
+        }
+      }
       return {
         helpExitCode: help.code,
         helpMissing: !help.output.includes('Usage') && help.output.includes('not found'),

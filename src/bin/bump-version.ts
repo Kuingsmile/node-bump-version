@@ -1,4 +1,4 @@
-import { createRequire } from 'node:module'
+import { readFileSync } from 'node:fs'
 import * as path from 'node:path'
 
 import inquirer from 'inquirer'
@@ -10,7 +10,6 @@ import logger from '../logger.js'
 import mainLifeCycle from '../mainLifeCycle.js'
 import { BumpVersionArgs, PackageJson, ReleaseChoice, ReleaseType } from '../types/index.js'
 import { helperMsg } from '../utils.js'
-const require = createRequire(import.meta.url)
 
 let argv: BumpVersionArgs = minimist(process.argv.slice(2), {
   alias: {
@@ -24,22 +23,22 @@ let argv: BumpVersionArgs = minimist(process.argv.slice(2), {
   },
 })
 
-let pkg: PackageJson | undefined
-try {
-  pkg = require(path.resolve(argv.path || process.cwd(), 'package.json'))
-} catch (e) {
-  logger('package.json not found!', 'error')
-  process.exit(0)
-}
-
-if (!pkg) {
-  logger('package.json not found!', 'error')
-  process.exit(0)
-}
-
 if (argv.h) {
   console.log(helperMsg)
   process.exit(0)
+}
+
+let pkg: PackageJson | undefined
+try {
+  pkg = JSON.parse(readFileSync(path.resolve(argv.path || process.cwd(), 'package.json'), 'utf8'))
+} catch (error) {
+  logger(error instanceof SyntaxError ? 'Invalid JSON in package.json!' : 'Unable to read package.json!', 'error')
+  process.exit(1)
+}
+
+if (!pkg || typeof pkg !== 'object' || Array.isArray(pkg)) {
+  logger('package.json must contain an object!', 'error')
+  process.exit(1)
 }
 
 const releaseTypes: ReleaseType[] = ['major', 'minor', 'patch', 'premajor', 'preminor', 'prepatch', 'prerelease']
@@ -48,10 +47,10 @@ if (!releaseTypes.includes(releaseType)) {
   logger('Invalid release type!', 'error')
   process.exit(1)
 }
-const currentVersion = pkg!.version
+const currentVersion = pkg.version
 if (currentVersion === undefined) {
   logger('Version field is not found in package.json!', 'error')
-  process.exit(0)
+  process.exit(1)
 }
 if (!semver.valid(currentVersion)) {
   logger('Invalid version in package.json!', 'error')
