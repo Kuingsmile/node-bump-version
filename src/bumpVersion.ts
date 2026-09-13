@@ -1,39 +1,40 @@
-import * as fs from 'node:fs'
-import { basename } from 'node:path'
+import { resolve } from 'node:path'
 
 import * as semver from 'semver'
 
-import { BumpVersionArgs, PackageJson } from './types/index'
-import { checkFileAndGetPath } from './utils'
+import { applyFileChanges, type FileChange, readOptionalFile } from './file-changes'
+import type { BumpVersionArgs, PackageJson } from './types/index'
 
-const bumpVersion = (argv: BumpVersionArgs, version: string): Promise<void> => {
+export function prepareVersionFiles(argv: BumpVersionArgs, version: string): FileChange[] {
   const normalizedVersion = semver.valid(version)
-  if (!normalizedVersion) return Promise.reject(new Error('Invalid release version'))
-  version = normalizedVersion
-  let versionFiles = ['package.json', 'package-lock.json']
-  versionFiles = checkFileAndGetPath(argv, versionFiles)
-
-  for (const file of versionFiles) {
-    const content = fs.readFileSync(file, 'utf8')
-    try {
-      const parsedContent: PackageJson = JSON.parse(content)
-      parsedContent.version = version
-      const rootPackage = parsedContent.packages?.['']
-      if (basename(file) === 'package-lock.json' && rootPackage && typeof rootPackage === 'object') {
-        rootPackage.version = version
-      }
-      const updatedContent = JSON.stringify(parsedContent, null, 2) + '\n'
-
-      if (argv.dry) {
-        console.log('bump version to:', version)
-      } else {
-        fs.writeFileSync(file, updatedContent, 'utf8')
-      }
-    } catch (e) {
-      return Promise.reject(e)
+  if (!normalizedVersion) throw new Error('Invalid release version')
+  return ['package.json', 'package-lock.json', 'npm-shrinkwrap.json'].flatMap(name => {
+    const path = resolve(argv.path || '.', name)
+    const before = readOptionalFile(path)
+    if (before === null) {
+      if (name === 'package.json') throw new Error('Unable to read package.json')
+      return []
     }
-  }
-  return Promise.resolve()
+    const parsed: PackageJson = JSON.parse(before)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error(`Invalid ${name} object`)
+    parsed.version = normalizedVersion
+    if (name !== 'package.json' && parsed.packages?.[''] !== undefined) {
+      const rootPackage = parsed.packages['']
+      if (!rootPackage || typeof rootPackage !== 'object' || Array.isArray(rootPackage)) {
+        throw new Error(`Invalid root package metadata in ${name}`)
+      }
+      rootPackage.version = normalizedVersion
+    }
+    const indent = before.match(/\n([\t ]+)"/)?.[1] || '  '
+    const newline = before.includes('\r\n') ? '\r\n' : '\n'
+    return [{ path, before, after: (JSON.stringify(parsed, null, indent) + '\n').replace(/\n/g, newline) }]
+  })
+}
+
+const bumpVersion = async (argv: BumpVersionArgs, version: string): Promise<void> => {
+  const changes = prepareVersionFiles(argv, version)
+  if (argv.dry) console.log('bump version to:', version)
+  else applyFileChanges(changes)
 }
 
 export default bumpVersion

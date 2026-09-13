@@ -1,24 +1,18 @@
-import * as fs from 'node:fs'
 import * as path from 'node:path'
 
 import { ConventionalChangelog } from 'conventional-changelog'
 
 import conventionalChangelogNode from './conventional-changelog-node/index'
+import { applyFileChanges, type FileChange, readOptionalFile } from './file-changes'
 import { BumpVersionArgs } from './types/index'
 
-const changelog = async (argv: BumpVersionArgs, newVersion: string): Promise<void> => {
+export const prepareChangelog = async (argv: BumpVersionArgs, newVersion: string): Promise<FileChange | undefined> => {
   if (argv.changelog === false) {
-    return Promise.resolve()
+    return undefined
   }
 
-  let oldContent: string
   const changelogFile = path.resolve(argv.path || './', argv.file || 'CHANGELOG.md')
-
-  try {
-    oldContent = fs.readFileSync(changelogFile, 'utf8')
-  } catch (e) {
-    oldContent = ''
-  }
+  const oldContent = readOptionalFile(changelogFile)
   const config = await conventionalChangelogNode
   const cc = new ConventionalChangelog(argv.path || './')
     .readPackage(path.resolve(argv.path || './', 'package.json'))
@@ -34,11 +28,17 @@ const changelog = async (argv: BumpVersionArgs, newVersion: string): Promise<voi
     content += chunk.toString()
   }
 
+  return { path: changelogFile, before: oldContent, after: content + (oldContent || '') }
+}
+
+const changelog = async (argv: BumpVersionArgs, newVersion: string): Promise<void> => {
+  const change = await prepareChangelog(argv, newVersion)
+  if (!change) return
   if (argv.dry) {
     console.log('Changelog is:')
-    console.log(content + oldContent)
+    console.log(change.after)
   } else {
-    fs.writeFileSync(changelogFile, content + oldContent)
+    applyFileChanges([change])
   }
 }
 

@@ -159,6 +159,12 @@ Don't know which version should be the next? Never mind:
 Unknown options, missing values, and positional arguments are rejected before the release starts.
 Boolean switches take no value: use `--push` or `--no-push`, never `--push false`.
 
+Releases require a branch, valid manifests/lockfiles, an unused version tag, and clean tracked/release files.
+Unrelated untracked files are left alone. Dry previews can inspect uncommitted work.
+All contents are prepared before writing; a failed write or commit restores the tool's changes.
+After a commit succeeds, a tag/push failure keeps that commit and reports how to finish the release.
+`--skip-commit` requires `--no-tag` and cannot be combined with `--push`.
+
 If you reject the default next version, then you can choose which version you want or customize one.
 
 if you just want to see what the changelog will be created and nothing will be changed:

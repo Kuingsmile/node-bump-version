@@ -21,7 +21,7 @@ import { ConventionalChangelog } from 'conventional-changelog'
 
 import changelogPreset from '../dist/conventional-changelog-node/conventional-changelog.js'
 import preset from '../dist/conventional-changelog-node/index.js'
-import { mainLifeCycle } from '../dist/index.js'
+import { executeRelease, mainLifeCycle, planRelease } from '../dist/index.js'
 
 const project = fileURLToPath(new URL('../', import.meta.url))
 const cli = join(project, 'dist/bin/bump-version.js')
@@ -139,6 +139,57 @@ test('CLI accepts --dry-run as a safe alias for --dry', async t => {
   await runCli(t, cwd, ['--dry-run'], [{ prompt: 'is it right?', input: 'y\n' }])
   assert.equal(git(cwd, 'status', '--porcelain'), '')
   assert.equal(git(cwd, 'tag', '--list'), 'v1.0.0')
+})
+
+test('release preflight rejects duplicate tags, invalid lockfiles and unsafe options without writes', async t => {
+  for (const scenario of ['tag', 'lockfile', 'skip', 'dirty', 'collision', 'detached']) {
+    const cwd = fixture(t)
+    const head = git(cwd, 'rev-parse', 'HEAD')
+    if (scenario === 'tag') git(cwd, 'tag', 'v1.0.1')
+    if (scenario === 'lockfile') writeFileSync(join(cwd, 'package-lock.json'), '{ invalid json')
+    if (scenario === 'dirty') writeFileSync(join(cwd, 'CHANGELOG.md'), 'Uncommitted work\n')
+    if (scenario === 'detached') git(cwd, 'checkout', '--detach')
+    const before = git(cwd, 'status', '--porcelain')
+    await assert.rejects(
+      mainLifeCycle(
+        {
+          _: [],
+          path: cwd,
+          skipCommit: scenario === 'skip',
+          file: scenario === 'collision' ? 'package.json' : 'CHANGELOG.md',
+        },
+        '1.0.0',
+        '1.0.1',
+      ),
+    )
+    assert.equal(JSON.parse(readFileSync(join(cwd, 'package.json'), 'utf8')).version, '1.0.0')
+    assert.equal(git(cwd, 'rev-parse', 'HEAD'), head)
+    assert.equal(git(cwd, 'status', '--porcelain'), before)
+  }
+})
+
+test('failed commit restores release files and staging while preserving unrelated untracked files', async t => {
+  const cwd = fixture(t)
+  const original = readFileSync(join(cwd, 'package.json'), 'utf8')
+  writeFileSync(join(cwd, 'notes.txt'), 'User notes\n')
+  mkdirSync(join(cwd, '.test-hooks'))
+  writeFileSync(join(cwd, '.test-hooks/pre-commit'), '#!/bin/sh\nexit 1\n', { mode: 0o755 })
+  git(cwd, 'config', 'core.hooksPath', join(cwd, '.test-hooks'))
+  const before = git(cwd, 'status', '--porcelain')
+  await assert.rejects(mainLifeCycle({ _: [], path: cwd }, '1.0.0', '1.0.1'))
+  assert.equal(readFileSync(join(cwd, 'package.json'), 'utf8'), original)
+  assert.equal(git(cwd, 'status', '--porcelain'), before)
+  assert.equal(readFileSync(join(cwd, 'notes.txt'), 'utf8'), 'User notes\n')
+})
+
+test('release refuses files changed after its preview', async t => {
+  const cwd = fixture(t)
+  const argv = { _: [], path: cwd }
+  const plan = await planRelease(argv, '1.0.0', '1.0.1')
+  writeFileSync(join(cwd, 'CHANGELOG.md'), 'Concurrent edit\n')
+  await assert.rejects(executeRelease(argv, plan), /changed after preview/)
+  assert.equal(JSON.parse(readFileSync(join(cwd, 'package.json'), 'utf8')).version, '1.0.0')
+  assert.equal(readFileSync(join(cwd, 'CHANGELOG.md'), 'utf8'), 'Concurrent edit\n')
 })
 
 test('commitlint accepts the custom convention and rejects invalid messages', () => {

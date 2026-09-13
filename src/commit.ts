@@ -3,7 +3,7 @@ import { BumpVersionArgs } from './types/index'
 import { checkFileAndGetPath } from './utils'
 
 const commit = async (argv: BumpVersionArgs, newVersion: string): Promise<string | void> => {
-  const changedFiles = ['package.json', 'package-lock.json']
+  const changedFiles = ['package.json', 'package-lock.json', 'npm-shrinkwrap.json']
 
   if (argv.changelog !== false) {
     changedFiles.push(argv.file || 'CHANGELOG.md')
