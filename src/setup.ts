@@ -20,7 +20,13 @@ function readPackage(path: string): { before: string; pkg: PackageJson } {
 export function initProject(argv: BumpVersionArgs): { files: string[]; dryRun: boolean; nextSteps: string[] } {
   const path = realpathSync(resolve(argv.path || '.'))
   const { before, pkg } = readPackage(path)
+  for (const name of ['scripts', 'config', 'dependencies', 'devDependencies', 'bumpVersion'] as const) {
+    const value = pkg[name]
+    if (value !== undefined && (!value || typeof value !== 'object' || Array.isArray(value)))
+      throw new Error(`package.json ${name} must be an object`)
+  }
   const preset = argv.preset || pkg.bumpVersion?.preset || 'emoji'
+  if (preset !== 'emoji' && preset !== 'conventional') throw new Error('Invalid bumpVersion.preset')
   if (pkg.bumpVersion?.preset && argv.preset && pkg.bumpVersion.preset !== argv.preset) {
     throw new Error('Existing bumpVersion.preset conflicts with --preset; edit it explicitly before initializing')
   }
@@ -46,10 +52,17 @@ export function initProject(argv: BumpVersionArgs): { files: string[]; dryRun: b
       'commitlint.config.cjs',
       'commitlint.config.mjs',
       'commitlint.config.ts',
+      'commitlint.config.cts',
+      'commitlint.config.mts',
+      'package.yaml',
       '.commitlintrc',
       '.commitlintrc.json',
       '.commitlintrc.js',
       '.commitlintrc.cjs',
+      '.commitlintrc.mjs',
+      '.commitlintrc.ts',
+      '.commitlintrc.cts',
+      '.commitlintrc.mts',
       '.commitlintrc.yml',
       '.commitlintrc.yaml',
     ].some(name => readOptionalFile(join(path, name)) !== null)
@@ -75,7 +88,7 @@ export function initProject(argv: BumpVersionArgs): { files: string[]; dryRun: b
     pkg.config.commitizen ??= { path: 'cz-customizable' }
     pkg.config['cz-customizable'] ??= { config: '.cz-config.cjs' }
     const config = join(path, '.cz-config.cjs')
-    if (readOptionalFile(config) === null)
+    if (pkg.config['cz-customizable'].config === '.cz-config.cjs' && readOptionalFile(config) === null)
       extras.push({
         path: config,
         before: null,

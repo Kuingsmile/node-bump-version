@@ -6,6 +6,7 @@ import { delimiter, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const project = fileURLToPath(new URL('../', import.meta.url))
+const sourcePackage = JSON.parse(readFileSync(join(project, 'package.json'), 'utf8'))
 const temporary = realpathSync(tmpdir())
 const root = mkdtempSync(join(temporary, 'node-bump-package-'))
 const consumer = join(root, 'consumer')
@@ -51,7 +52,20 @@ try {
   }
   writeFileSync(
     join(consumer, 'package.json'),
-    JSON.stringify({ name: 'packed-consumer', version: '1.0.0', private: true, type: 'module' }, null, 2) + '\n',
+    JSON.stringify(
+      {
+        name: 'packed-consumer',
+        version: '1.0.0',
+        private: true,
+        type: 'module',
+        devDependencies: {
+          typescript: sourcePackage.devDependencies.typescript,
+          '@types/node': sourcePackage.devDependencies['@types/node'],
+        },
+      },
+      null,
+      2,
+    ) + '\n',
   )
   console.log('Installing the packed package in an isolated consumer...')
   try {
@@ -77,6 +91,22 @@ try {
     "await import('node-bump-version'); await import('node-bump-version/commitlint'); await import('node-bump-version/commitlint/conventional'); await import('node-bump-version/changelog'); await import('node-bump-version/changelog/conventional'); await import('node-bump-version/dist/index.js');",
   ])
   const cli = join(consumer, 'node_modules/node-bump-version/dist/bin/bump-version.js')
+  writeFileSync(
+    join(consumer, 'check.mts'),
+    `import { planRelease, type BumpVersionArgs } from 'node-bump-version'\nimport emoji from 'node-bump-version/changelog'\nimport standard from 'node-bump-version/changelog/conventional'\nimport type { Preset } from 'conventional-changelog'\nconst options: BumpVersionArgs = { _: [], dry: true }\nconst custom: Preset = await emoji\nconst conventional: Preset = await standard\nvoid [options, custom, conventional, planRelease]\n`,
+  )
+  run(process.execPath, [
+    join(consumer, 'node_modules/typescript/bin/tsc'),
+    '--noEmit',
+    '--strict',
+    '--module',
+    'NodeNext',
+    '--target',
+    'ES2022',
+    '--types',
+    'node',
+    'check.mts',
+  ])
   assert.match(run(process.execPath, [cli, '--help']), /Usage/)
   const git = (...args) => run('git', args).trim()
   git('init', '--initial-branch=main', '--template=')

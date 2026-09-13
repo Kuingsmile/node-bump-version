@@ -227,6 +227,20 @@ test('doctor and stable public exports work without releasing', t => {
   assert.equal(git(cwd, 'status', '--porcelain'), '')
 })
 
+test('init refuses malformed configuration and preserves TypeScript commitlint files', t => {
+  const cwd = fixture(t)
+  const pkg = JSON.parse(readFileSync(join(cwd, 'package.json'), 'utf8'))
+  const invalid = JSON.stringify({ ...pkg, scripts: [] })
+  writeFileSync(join(cwd, 'package.json'), invalid)
+  assert.throws(() => initProject({ _: ['init'], path: cwd, hooks: true }), /scripts must be an object/)
+  assert.equal(readFileSync(join(cwd, 'package.json'), 'utf8'), invalid)
+  writeFileSync(join(cwd, 'package.json'), JSON.stringify(pkg))
+  writeFileSync(join(cwd, '.commitlintrc.mts'), 'export default { rules: {} }\n')
+  initProject({ _: ['init'], path: cwd, hooks: true })
+  assert.equal(existsSync(join(cwd, 'commitlint.config.cjs')), false)
+  assert.equal(readFileSync(join(cwd, '.commitlintrc.mts'), 'utf8'), 'export default { rules: {} }\n')
+})
+
 test('automatic recommendations drive the CLI and explain breaking custom commits', t => {
   const cwd = fixture(t)
   const result = spawnSync(process.execPath, [cli, '--type', 'auto', '--dry-run', '--json'], { cwd, encoding: 'utf8' })
@@ -313,6 +327,27 @@ test('release refuses files changed after its preview', async t => {
   await assert.rejects(executeRelease(argv, plan), /changed after preview/)
   assert.equal(JSON.parse(readFileSync(join(cwd, 'package.json'), 'utf8')).version, '1.0.0')
   assert.equal(readFileSync(join(cwd, 'CHANGELOG.md'), 'utf8'), 'Concurrent edit\n')
+})
+
+test('release binds the preview to its branch and preset', async t => {
+  const cwd = fixture(t)
+  const argv = { _: [], path: cwd }
+  const plan = await planRelease(argv, '1.0.0', '1.0.1')
+  await assert.rejects(executeRelease({ ...argv, preset: 'conventional' }, plan), /options changed/)
+  git(cwd, 'switch', '-c', 'other')
+  await assert.rejects(executeRelease(argv, plan), /Branch changed/)
+  assert.equal(git(cwd, 'status', '--porcelain'), '')
+})
+
+test('changelog aliases cannot overwrite a manifest through a directory link', async t => {
+  const cwd = fixture(t)
+  const linked = join(cwd, 'alias')
+  symlinkSync(cwd, linked, process.platform === 'win32' ? 'junction' : 'dir')
+  await assert.rejects(
+    mainLifeCycle({ _: [], path: cwd, file: 'alias/package.json' }, '1.0.0', '1.0.1'),
+    /must not overwrite/,
+  )
+  assert.equal(JSON.parse(readFileSync(join(cwd, 'package.json'), 'utf8')).version, '1.0.0')
 })
 
 test('push releases to the upstream branch and sends only the intended tag', async t => {

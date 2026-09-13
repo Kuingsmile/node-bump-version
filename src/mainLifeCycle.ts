@@ -1,5 +1,5 @@
 import { realpathSync } from 'node:fs'
-import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
+import { basename, dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 
 import * as semver from 'semver'
 
@@ -54,10 +54,12 @@ export async function planRelease(
   if (changelog) changes.push(changelog)
   const unique = new Set<string>()
   for (const change of changes) {
-    const location = relative(root, realpathSync(dirname(change.path)))
+    const parent = realpathSync(dirname(change.path))
+    const location = relative(root, parent)
     if (isAbsolute(location) || location === '..' || location.startsWith(`..${sep}`)) {
       throw new Error('Release files must be inside the Git repository')
     }
+    change.path = resolve(parent, basename(change.path))
     const key = process.platform === 'win32' ? change.path.toLowerCase() : change.path
     if (unique.has(key)) throw new Error('Changelog must not overwrite a package manifest or lockfile')
     unique.add(key)
@@ -90,7 +92,18 @@ export async function planRelease(
 
 export async function executeRelease(argv: BumpVersionArgs, plan: ReleasePlan): Promise<void> {
   argv = { ...argv, path: plan.path }
-  for (const name of ['dry', 'tag', 'push', 'skipCommit', 'changelog', 'file', 'remote', 'branch', 'atomic'] as const) {
+  for (const name of [
+    'dry',
+    'tag',
+    'push',
+    'skipCommit',
+    'changelog',
+    'file',
+    'remote',
+    'branch',
+    'atomic',
+    'preset',
+  ] as const) {
     if (argv[name] !== plan.options[name]) throw new Error('Release options changed; preview again')
   }
   if (argv.dry) {
@@ -102,6 +115,8 @@ export async function executeRelease(argv: BumpVersionArgs, plan: ReleasePlan): 
   }
   if ((await exec(argv, 'git', ['rev-parse', 'HEAD'])).trim() !== plan.head)
     throw new Error('HEAD changed; preview again')
+  if ((await exec(argv, 'git', ['branch', '--show-current'])).trim() !== plan.branch)
+    throw new Error('Branch changed; preview again')
   if ((await exec(argv, 'git', ['status', '--porcelain', '--untracked-files=no'])).trim()) {
     throw new Error('Tracked files changed after preview; commit or stash them first')
   }

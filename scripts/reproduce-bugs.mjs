@@ -97,7 +97,9 @@ function runNode(cwd, file, args = [], confirm = true) {
     }
     child.stdout.on('data', receive)
     child.stderr.on('data', receive)
-    child.stdin.on('error', () => {})
+    child.stdin.on('error', () => {
+      /* The fixture may exit before the queued confirmation is written. */
+    })
     child.once('error', () => {
       clearTimeout(timeout)
       reject(new ReproductionError('Could not start fixture command'))
@@ -210,11 +212,13 @@ const cases = [
         git(cwd, 'rev-parse', 'HEAD') === head &&
         git(cwd, 'tag', '--list') === 'v1.0.0'
       assert.ok(properlyForwardedDryIsClean, 'Correctly forwarded dry mode must be a clean control')
-      const documentedArgs = readFileSync(join(project, 'README.md'), 'utf8').match(/^npm run release (--.*)$/m)?.[1]
-      assert.ok(['--dry', '-- --dry'].includes(documentedArgs), 'The README must document a recognized dry-run command')
+      const documentedArgs = readFileSync(join(project, 'README.md'), 'utf8').match(
+        /^npm run release ((?:-- )?--dry(?:-run)?)\s*$/m,
+      )?.[1]
+      assert.ok(documentedArgs, 'The README must document a recognized dry-run command')
       succeeded(await runNode(cwd, npm, ['run', 'release', ...documentedArgs.split(' ')]))
       return {
-        documentedUnsafeCommand: documentedArgs === '--dry',
+        documentedUnsafeCommand: !documentedArgs.startsWith('-- '),
         version: version(cwd),
         releaseTagCreated: git(cwd, 'tag', '--list', 'v1.0.1') === 'v1.0.1',
         commitCreated: git(cwd, 'rev-parse', 'HEAD') !== head,

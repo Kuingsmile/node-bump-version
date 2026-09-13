@@ -1,349 +1,194 @@
-# PicGo BumpVersion
+# node-bump-version
 
-A full `git commit` -> `changelog` -> `release` workflow & convention.
+Preview and automate Node.js version bumps, changelogs, release commits, and Git tags. Use the built-in emoji convention
+or standard Conventional Commits, interactively or in CI.
 
-It's now only available for Node.js projects. Thanks [@picgo/bump-version](https://github.com/PicGo/bump-version) for the inspiration.
+Requires Git and Node.js **22.13.0+ on the 22.x line, or 24+** (`^22.13.0 || >=24.0.0`).
 
-## Installation
-
-For a release-only setup, install `node-bump-version` and run:
+## Quick start
 
 ```bash
+npm install -D node-bump-version
 npx bump-version init
 npx bump-version doctor
+npm run release -- --dry-run
+npm run release
 ```
 
-To also configure hooks and the commit helper:
+With Yarn:
+
+```bash
+yarn add -D node-bump-version
+yarn bump-version init
+yarn release --dry-run
+yarn release
+```
+
+In PowerShell, use `npm.cmd run release -- --dry-run` to preserve npm's argument separator. A release updates the
+selected package, generates its changelog, commits the changes, and creates an annotated tag. Publishing to npm is a
+separate step. Pushing is enabled only with `--push`.
+
+## Optional commit tools
+
+Husky, commitlint, Commitizen, and cz-customizable are optional integrations. Configure them with:
 
 ```bash
 npx bump-version init --hooks --commit-helper --dry-run
 npx bump-version init --hooks --commit-helper
 npm install
 npm run prepare
-```
-
-Initialization merges missing settings and preserves existing scripts, commitlint configuration, and hooks.
-Use `--preset conventional` to configure the standard convention; the selection is saved in `package.json` under `bumpVersion.preset`.
-`doctor --json` reports missing dependencies, invalid versions, detached HEAD, and inactive hooks without making changes.
-
-Public imports are `node-bump-version/commitlint`, `/commitlint/conventional`, `/changelog`, `/changelog/conventional`, and `/commitizen`.
-For commitlint, create `commitlint.config.cjs` with `module.exports = { extends: [require.resolve('node-bump-version/commitlint')] }`.
-The `require.resolve` is needed because commitlint prefixes bare names in its `extends` array.
-Existing documented `dist/*` imports remain available.
-
-Husky, commitlint, Commitizen, and cz-customizable are optional peer integrations.
-They are not installed with the release-only CLI. Existing users of `git-cz` should add
-`commitizen` and `cz-customizable` as development dependencies, or run `init --commit-helper` followed by installation.
-Use `init --hooks` to declare the hook dependencies. Published files are limited to built code/types, preset assets, and documentation.
-
-Requires **Node.js 22.13.0 or newer on the 22.x line, or Node.js 24+** (`^22.13.0 || >=24.0.0`).
-
-```bash
-npm install -D node-bump-version husky@^9 @commitlint/cli
-
-#or
-
-yarn add -D node-bump-version husky@^9 @commitlint/cli
-```
-
-Also, add the following data at the top level in your `package.json` to properly config `bump-version` (replace old `config` if you have already configured `commitizen` or `cz-customizable` before):
-
-```json
-"config": {
-  "commitizen": {
-    "path": "./node_modules/cz-customizable"
-  },
-  "cz-customizable": {
-    "config": "./node_modules/node-bump-version/.cz-config.cjs"
-  }
-},
-"commitlint": {
-  "extends": ["./node_modules/node-bump-version/dist/commitlint-node/index.js"]
-}
-```
-
-And then add the following (inside the braces) to the `scripts` field of your package.json:
-
-```json
-"scripts": {
-  "prepare": "husky",
-  "cz": "git-cz",
-  "release": "bump-version"
-}
-```
-
-If you already have a `prepare` script, append `&& husky` to it.
-
-Create `.husky/commit-msg` with the following contents (save it as UTF-8 with LF line endings, including on Windows):
-
-```sh
-npx --no -- commitlint --edit "$1"
-```
-
-Run the setup once from your project's Git root:
-
-```bash
-npm run prepare
-# or
-yarn run prepare
-```
-
-Commit `.husky/commit-msg` with your package configuration so other contributors receive the hook. npm and Yarn 1 run `prepare` on subsequent installs; with Yarn 2+, run `yarn run prepare` explicitly after installing.
-
-When upgrading from Husky 4, remove the old top-level `husky` configuration and move any other hooks into matching files under `.husky/`. Husky 9 uses Git's positional arguments such as `$1` for the commit message file. See the [Husky migration guide](https://typicode.github.io/husky/migrate-from-v4.html).
-
-Then you can use `npm run cz` for committing standard message and use `npm run release` to bump version & auto generate changelog in your project!
-
-If you are using [yarn](https://yarnpkg.com/), then it will be more simple just like:
-
-```bash
-# to commit
-yarn cz
-
-# to bump version
-yarn release
-```
-
-So the workflow is the following:
-
-1. `git add` something changed
-2. `npm run cz` to commit
-3. `npm run release` to release or deploy
-
-## Usage
-
-> If you installed bump-version in a project, then you can just write down the `bump-version` command in your `package.json`'s `scripts` field. Then just `npm run you-command`.
-
-### Commit
-
-```bash
 npm run cz
-
-# or
-
-yarn cz
 ```
 
-This leads to an interactive submit message interface:
+`init` adds missing scripts and configuration, preserving existing scripts, settings, and hook files. Run `init --hooks`
+at the Git root. It declares optional development dependencies; installation and hook activation are explicit steps. Run
+`doctor` afterwards to check the package version, Git branch, dependencies, and hooks.
+
+For the standard convention, pass `--preset conventional` during initialization. The selection is stored in
+`package.json`:
+
+```json
+{ "bumpVersion": { "preset": "conventional" } }
+```
+
+Command-line `--preset` overrides that setting for the current release. Existing commitlint and commit-helper
+configurations are preserved, so ensure they match the selected convention.
+
+Existing users of the transitive commit helper should add `commitizen` and `cz-customizable` as development
+dependencies, or run `init --commit-helper` followed by installation. When migrating from Husky 4, remove the old
+top-level `husky` configuration and move hooks into `.husky/` files. See the
+[Husky migration guide](https://typicode.github.io/husky/migrate-from-v4.html).
+
+## Release commands
 
 ```bash
-? Select the type of change that you're committing: (Use arrow keys)
-❯ Feature:  when adding new features 
-  Fix:      when fixing bugs 
-  WIP:      when working in progress 
-  Refactor: when changing the code without adding features or fixing bugs 
-  Chore:    when changing the build process or auxiliary tools and libraries such as documentation generation 
-  Style:    when improving the format/structure of the code 
-  Upgrade:  when upgrading dependencies
-```
-
-You can use this interface to quickly generate commit information that is compliant with the convention.
-
-### Bump version
-
-```bash
-npm run release
-
-# or
-
-yarn run cz
-```
-
-```txt
-Usage
-  bump-version
-
-Example
-  bump-version -t major
-
-Options
-  -a, --preid-alpha             Prerelease id: alpha. Exp. 1.0.0.alpha-0
-
-  -b, --preid-beta              Prerelease id: beta.  Exp. 1.0.0.beta-0
-
-  -d, --dry, --dry-run          Preview the release without changing files, commits or tags
-
-  -f, --file                    Read and write the CHANGELOG file, relative to package.json's path
-                                Default: CHANGELOG.md
-
-  -p, --path                    A filepath of where your package.json is located
-                                Default: ./
-
-  -h, --help                    Display help message
-
-  -t, --type                    Release type. [major, minor, patch, premajor, preminor, prepatch, prerelease]
-                                Default: patch
-
-  --push                        Push the current release to its upstream (or origin/current branch)
-                                Default: false
-
-  --no-tag                      Tag won't be created
-                                Default: tag will be created
-
-  --no-changelog                Changelog won't be created
-                                Default: changelog will be created
-```
-
-Don't know which version should be the next? Never mind:
-
-Unknown options, missing values, and positional arguments are rejected before the release starts.
-Boolean switches take no value: use `--push` or `--no-push`, never `--push false`.
-
-Releases require a branch, valid manifests/lockfiles, an unused version tag, and clean tracked/release files.
-Unrelated untracked files are left alone. Dry previews can inspect uncommitted work.
-All contents are prepared before writing; a failed write or commit restores the tool's changes.
-After a commit succeeds, a tag/push failure keeps that commit and reports how to finish the release.
-`--skip-commit` requires `--no-tag` and cannot be combined with `--push`.
-
-With `--push`, the upstream remote and branch are used, falling back to `origin` and the current branch.
-Override them with `--remote NAME --branch NAME`. Only the release tag is pushed, together with the release commit.
-Pushes are atomic by default. If a server lacks atomic support, finish the existing release manually;
-use `--no-atomic` for future releases only if partial remote updates are acceptable.
-
-If you reject the default next version, then you can choose which version you want or customize one.
-
-if you just want to see what the changelog will be created and nothing will be changed:
-
-```bash
-npm run release -- --dry
-
-# In PowerShell, use npm.cmd to preserve the argument separator:
-npm.cmd run release -- --dry
-```
-
-## Convention
-
-### Automation and previews
-
-```bash
-bump-version --dry-run --json
-bump-version --type minor --yes
-bump-version --type preminor --preid rc --yes --json
+bump-version --type minor
+bump-version --type auto --dry-run
+bump-version --type auto --preset conventional --yes
+bump-version --type preminor --preid rc --yes
+bump-version --path ./packages/example --file HISTORY.md --dry-run
+bump-version --no-changelog --no-tag --yes
 bump-version --version
+bump-version --help
 ```
 
-Dry runs do not prompt unless `--interactive` is supplied. Real releases in CI or with piped input require `--yes`.
-`--json` writes one JSON result to stdout, without spinner output; real JSON releases also require `--yes`.
-The result includes `ok`, `dryRun`, versions, changed file paths, branch, tag, and push destination.
-Failures return `{ "ok": false, "error": { "code": "RELEASE_FAILED", "message": "..." } }` and exit 1.
-Interrupting an interactive prompt exits 130. The preview describes the release before confirmation.
+| Option                                   | Behavior                                                                                               |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `-t, --type`                             | `patch` by default; also `auto`, `major`, `minor`, `premajor`, `preminor`, `prepatch`, or `prerelease` |
+| `-d, --dry, --dry-run`                   | Preview without changing files, commits, or tags                                                       |
+| `-y, --yes`                              | Accept the calculated version without prompting                                                        |
+| `--json`                                 | Emit one structured result; use `--yes` for a real release                                             |
+| `--interactive`                          | Explicitly enable prompts when input is piped                                                          |
+| `--preid ID`                             | Prerelease identifier, such as `alpha`, `beta`, or `rc`                                                |
+| `-a, --preid-alpha` / `-b, --preid-beta` | Compatibility shortcuts for prerelease identifiers                                                     |
+| `-p, --path`                             | Package directory; defaults to the current directory                                                   |
+| `-f, --file`                             | Changelog path relative to the package; defaults to `CHANGELOG.md`                                     |
+| `--preset`                               | `emoji` or `conventional`                                                                              |
+| `--no-tag` / `--no-changelog`            | Disable those release steps                                                                            |
+| `--skip-commit`                          | Leave changes uncommitted; requires `--no-tag` and forbids `--push`                                    |
+| `--push`                                 | Push to the upstream, or `origin` and the current branch                                               |
+| `--remote NAME` / `--branch NAME`        | Override the push destination                                                                          |
+| `--no-atomic`                            | Permit a non-atomic push when the server lacks atomic support                                          |
+| `-h, --help` / `-v, --version`           | Show help or the tool version without requiring a project                                              |
 
-## Commit conventions
+Unknown options and unexpected positional arguments fail before releasing. Boolean switches take no value: use `--push`
+or `--no-push`, never `--push false`.
 
-Use `--type auto` to choose major, minor, or patch from commits since the latest reachable version tag.
-The preview and JSON result include the reason. An empty release history requires an explicit release type.
-The default remains `--type patch` and the existing emoji convention.
+## Recommendations and changelogs
 
-For standard `feat:`, `fix:`, and `refactor!:` commits, use `--preset conventional --type auto`.
-That preset supports both `BREAKING CHANGE:` and `BREAKING-CHANGE:` footers on any commit type.
-Use the matching commitlint configuration at `node-bump-version/dist/commitlint-standard/index.js`.
-It creates release messages such as `chore(release): v1.2.0`.
+`--type auto` inspects commits since the highest reachable valid `v` version tag. It recommends major for breaking
+changes, minor for features, and patch otherwise, and explains the recommendation. If there are no commits since that
+tag, choose an explicit release type to release anyway. The default release type remains `patch`.
 
-### Git Commit Message
+The default emoji convention uses headers such as:
 
-- Use the present tense ("add feature" not "added feature")
-- Use the imperative mood ("move cursor to..." not "moves cursor to...")
-- Do not repeat the word in type ("Fix: xxx bugs when..." not "Fix: fix xxx bugs when...")
-- Limit the first line to 72 characters or less
-- Start the commit message with an applicable `emoji` & `type`:
+```text
+:sparkles: Feature(core): add automatic recommendations
+:bug: Fix(cli): handle missing input
+:hammer: Refactor(api): replace the configuration format
 
-  - :sparkles: Feature `:sparkles: Feature` when adding new features
-  - :bug: Fix `:bug: Fix` when fixing bugs
-  - :construction: WIP `:construction: WIP` when working in progress
-  - :hammer: Refactor `:hammer: Refactor` when changing the code without adding features or fixing bugs
-  - :package: Chore `:package: Chore` when changing the build process or auxiliary tools and libraries such as documentation generation
-  - :art: Style `:art: Style` when improving the format/structure of the code
-  - :arrow_up: Upgrade `:arrow_up: Upgrade` when upgrading dependencies
-  - :zap: Perf `:zap: Perf` when improving performance
-  - :pencil: Docs `:pencil: Docs` when wrting docs
-  - :white_check_mark: Test `:white_check_mark: Test` when adding or updating tests
-  - :back: Revert `:back: Revert` when reverting some commits
-  - :pushpin: Init `:pushpin: Init` when initializing a project
-  - :tada: Release `:tada: Release` when releasing (**will be automatically committed by `bump-version`**)
-
-#### Commit Message Format
-
-A commit message consists of a **header**, **body**(optional) and **footer**(optional). The header has a **emoji**, **type**, **scope**(optional) and **subject**:
-
-```txt
-<emoji> <type>([scope]): <subject>
-<BLANK LINE>
-[body]
-<BLANK LINE>
-[footer]
+BREAKING CHANGE: use the new configuration format
 ```
 
-#### Examples
+The standard preset accepts:
 
-##### 1. Normal
-
-:sparkles: Feature(core): add error notification
-
-:bug: Fix(core): xxx error should be thrown
-
-```txt
-:sparkles: Feature(core): add error notification
-
-:bug: Fix(core): xxx error should be thrown
+```text
+feat(core): add automatic recommendations
+fix(cli): handle missing input
+refactor(api)!: replace the configuration format
 ```
 
-and they will be rendered into the following changelog:
+Standard breaking changes can use `!`, `BREAKING CHANGE:`, or `BREAKING-CHANGE:` on any commit type. Both presets
+include breaking-change notes in the changelog. Standard releases use `chore(release): v1.2.0`; emoji releases use
+`:tada: Release: v1.2.0`. Use imperative subjects, lower-case scopes, and a complete header no longer than **100
+characters**, including its type and scope.
 
-```markdown
-# x.x.0 (20xx-xx-xx)
+## Release safety and recovery
 
-## :sparkles: Features
+Before writing, the tool checks the version, manifests and npm lockfiles, branch, tag availability, file paths, and
+configured push destination. Real releases require clean tracked files and clean release files. Unrelated untracked
+files are preserved; dry previews may inspect uncommitted work. `package.json`, `package-lock.json`, and
+`npm-shrinkwrap.json` are updated together, retaining indentation and line endings. The changelog is prepared before any
+file is written.
 
-- add error notification
+If a write or commit fails, the tool restores its own changes where safe. Concurrent edits are preserved and reported
+for manual recovery. If a commit succeeds but tagging or pushing fails, the release commit is retained. Resolve the
+reported cause and finish tagging/pushing that existing commit; do not rerun the version bump. Only the intended release
+tag is pushed, together with the release branch. Pushes are atomic by default and fail if the server cannot support
+them.
 
-## :bug: Bug Fixes
+`--path` targets one package. Workspace dependency ranges and coordinated multi-package releases are not automated.
 
-- xxx error should be thrown
+## CI and JSON output
+
+```bash
+bump-version --type auto --dry-run --json
+bump-version --type minor --yes --json
+bump-version doctor --json
 ```
 
-##### 2. BREAKING CHANGE
+Dry runs do not prompt unless `--interactive` is set. Real releases with piped input require `--yes`. JSON mode emits
+one result to stdout without spinner output. Successful release results include `ok`, `dryRun`, `path`,
+`currentVersion`, `newVersion`, `files`, `branch`, `commit`, `tag`, and `push`, plus a recommendation when requested.
+Failures return an `error` object with `code` and `message` and exit 1. Interrupting an interactive prompt exits 130.
 
-**Note: BREAKING CHANGE can only be in the type of `Feature` or `Fix`.**
+## Public API and presets
 
-:sparkles: Feature(core): add error notification
+```js
+import { planRelease, executeRelease } from 'node-bump-version'
 
-BREAKING CHANGE: change api for error notification
-
-```md
-:sparkles: Feature(core): add error notification
-
-BREAKING CHANGE: change api for error notification
+const options = { _: [], path: process.cwd(), dry: true }
+const plan = await planRelease(options, '1.0.0', '1.1.0')
+await executeRelease(options, plan)
 ```
 
-and they will be rendered into the following changelog:
+A plan records the inputs, Git revision, and file contents. Execution rejects changed release options, revisions, or
+files. The existing `mainLifeCycle`, `bumpVersion`, `changelog`, `commit`, and `tag` exports remain available. Low-level
+file helpers do not perform the full lifecycle's Git preflight checks.
 
-```markdown
-# x.x.0 (20xx-xx-xx)
+| Import                                      | Purpose                              |
+| ------------------------------------------- | ------------------------------------ |
+| `node-bump-version/commitlint`              | Emoji commitlint preset              |
+| `node-bump-version/commitlint/conventional` | Standard commitlint preset           |
+| `node-bump-version/changelog`               | Emoji changelog preset               |
+| `node-bump-version/changelog/conventional`  | Standard changelog preset            |
+| `node-bump-version/commitizen`              | Emoji commit-helper configuration    |
+| `node-bump-version/commitizen/conventional` | Standard commit-helper configuration |
 
-## :sparkles: Features
+For manual commitlint setup, create `commitlint.config.cjs`:
 
-- add error notification
-
-## BREAKING CHANGES
-
-- change api for error notification
+```js
+module.exports = {
+  extends: [require.resolve('node-bump-version/commitlint')],
+}
 ```
 
-### Git Branch Management
-
-**Important**: Always use `rebase` or `squash` or `cherry-pick` instead of `merge`
-
-Available branches:
-
-- `master` for the release
-- `dev` for the development
-- `docs` or `gh-pages` for the documentation **[optional]**
-- `pr` for the pull request **[optional]**
-- `hot-fix` for fixing the bug in master **[optional]**
-- `feat-*` for developing a new feature
-- `fix-*` for fixing a bug in dev branch
+Use `require.resolve` because commitlint prefixes bare names in `extends`. Existing documented `dist/*` and
+`.cz-config.cjs` imports remain available.
 
 ## Development
+
+This repository uses Yarn **1.22.22**, pinned in `packageManager`.
 
 ```bash
 yarn install --frozen-lockfile
@@ -351,21 +196,23 @@ yarn build
 yarn lint:check
 yarn typecheck
 yarn test
+yarn test:regressions
+yarn test:package
 ```
 
-This repository uses Yarn 1. Installing dependencies activates the Husky 9 hooks. Run `yarn build` before your first commit because the local commitlint configuration loads from `dist/`. The pre-commit hook runs `yarn run lint`, and the commit-msg hook validates the message with commitlint.
+Build before the first commit: the local commitlint configuration loads from `dist/`. The pre-commit hook runs
+`yarn lint`; the commit-msg hook runs commitlint. Use `git add .` followed by `yarn cz` to compose a commit.
 
-`yarn test` builds the package and tests the CLI, commitlint configuration, Git hooks, changelog generation, dry runs, release commits, and tags in temporary Git repositories. Git must be installed.
+The build compiles all JavaScript entry points in one pass and declarations in a second pass, sharing common modules.
+Build outputs are cleaned first. The existing `--forceExit` workaround is retained so completed builds terminate
+reliably.
 
-CI runs on Windows, Linux, and macOS with Node 22.13.0, current 22.x, 24.x, and 26.x.
-It includes the 11 audit regressions (`yarn test:regressions`) and a packed consumer test (`yarn build && yarn test:package`).
-The package test downloads runtime dependencies into a temporary project, checks public imports, and performs a local release.
-It does not install optional integrations, publish packages, or contact Git remotes.
-
-TypeScript is kept at 6.0.3, the latest stable version supported by the current `typescript-eslint` peer range (`>=4.8.4 <6.1.0`).
+CI covers Windows, Linux, and macOS on Node 22.13.0, current 22.x, 24.x, and 26.x. It checks lint, types, release tests,
+the 11 audit regressions, and an isolated installation of the npm tarball. `test:package` requires registry access and
+an existing build; it installs runtime dependencies without optional integrations and performs a release in a temporary
+local repository. Tests never publish packages or use this project's remotes. See [scripts/README.md](scripts/README.md)
+for regression commands.
 
 ## License
 
-[MIT](http://opensource.org/licenses/MIT)
-
-Copyright (c) 2023 Kuingsmile
+[MIT](LICENSE). Inspired by [@picgo/bump-version](https://github.com/PicGo/bump-version).

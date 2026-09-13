@@ -19,14 +19,14 @@
     "bump-version": "./dist/bin/bump-version.js"
   },
   "scripts": {
-    "build": "rollup -c --forceExit",
+    "build": "yarn run clean && rollup -c --forceExit",
     "clean": "rimraf dist",
     "cz": "git-cz",
     "dev": "rollup -c --watch",
     "lint": "eslint --fix",
     "lint:check": "eslint",
     "prepare": "husky",
-    "prepublishOnly": "yarn run clean && yarn run build",
+    "prepublishOnly": "yarn run build",
     "release": "yarn run build && node ./dist/bin/bump-version.js",
     "reproduce:bugs": "node scripts/reproduce-bugs.mjs",
     "pretest": "yarn run build",
@@ -60,14 +60,11 @@
   "devDependencies": {
     "@commitlint/cli": "^21.2.2",
     "@eslint/js": "^10.0.1",
-    "@rollup/plugin-commonjs": "^29.0.3",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-typescript": "^12.3.0",
     "@types/node": "^22.20.2",
     "@types/semver": "^7.8.0",
-    "@typescript-eslint/eslint-plugin": "^8.70.0",
-    "@typescript-eslint/parser": "^8.70.0",
     "commitizen": "^4.3.2",
     "cz-customizable": "^7.5.4",
     "eslint": "^10.10.0",
@@ -81,7 +78,6 @@
     "prettier": "^3.9.4",
     "rimraf": "^6.1.3",
     "rollup": "^4.63.1",
-    "rollup-plugin-copy": "^3.5.0",
     "rollup-plugin-dts": "^6.5.1",
     "tslib": "^2.8.1",
     "typescript": "^6.0.3",
@@ -153,5 +149,6 @@
     "semver",
     "conventional-commits",
     "cli"
-  ]
+  ],
+  "packageManager": "yarn@1.22.22"
 }

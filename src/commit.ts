@@ -12,7 +12,7 @@ const commit = async (argv: BumpVersionArgs, newVersion: string): Promise<string
   const releaseMsg =
     argv.preset === 'conventional' ? `chore(release): v${newVersion}` : `:tada: Release: v${newVersion}`
 
-  if ((argv as any).skipCommit) return Promise.resolve()
+  if (argv.skipCommit) return Promise.resolve()
 
   const files = checkFileAndGetPath(argv, changedFiles)
 

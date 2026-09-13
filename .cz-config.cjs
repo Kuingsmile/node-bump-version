@@ -35,7 +35,7 @@ module.exports = {
     },
     {
       value: ':pencil: Docs',
-      name: 'Docs:     when wrting docs',
+      name: 'Docs:     when writing docs',
     },
     {
       value: ':white_check_mark: Test',

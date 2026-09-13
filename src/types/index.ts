@@ -31,7 +31,6 @@ export interface BumpVersionArgs {
   tag?: boolean
   'no-tag'?: boolean
   'no-changelog'?: boolean
-  [key: string]: any
 }
 
 export interface PackageJson {
@@ -44,7 +43,15 @@ export interface PackageJson {
   scripts?: Record<string, string>
   dependencies?: Record<string, string>
   devDependencies?: Record<string, string>
-  [key: string]: any
+  bumpVersion?: { preset?: 'emoji' | 'conventional' }
+  commitlint?: unknown
+  config?: {
+    commitizen?: { path: string }
+    'cz-customizable'?: { config: string }
+    [key: string]: unknown
+  }
+  packages?: Record<string, { version?: string; [key: string]: unknown }>
+  [key: string]: unknown
 }
 
 /**

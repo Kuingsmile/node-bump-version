@@ -1,8 +1,10 @@
+import type { Commit } from 'conventional-commits-parser'
+
 import parserOpts from './parser-opts'
 
 export interface RecommendedBumpOpts {
   parserOpts: typeof parserOpts
-  whatBump: (commits: any[]) => {
+  whatBump: (commits: Pick<Commit, 'type' | 'notes'>[]) => {
     level: number
     reason: string
   }

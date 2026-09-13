@@ -61,7 +61,7 @@ const templates: Pick<WriterOpts, 'template' | 'headerPartial' | 'commitPartial'
       .join('\n\n'),
 }
 
-const compareFunc = (a: any, b: any): number => {
+const compareFunc = (a: { title: string }, b: { title: string }): number => {
   if (a.title < b.title) return -1
   if (a.title > b.title) return 1
   return 0
@@ -69,14 +69,14 @@ const compareFunc = (a: any, b: any): number => {
 
 const headerPattern = /^(:.*: (.*))$/
 
-const compareTitleFunc = (a: any, b: any): number => {
+const compareTitleFunc = (a: { title: string }, b: { title: string }): number => {
   const sortMap: Record<string, number> = {
     Features: 10,
     'Bug Fixes': 9,
     'BREAKING CHANGES': 8,
   }
-  const typeA = a.title.match(headerPattern)?.[2]
-  const typeB = b.title.match(headerPattern)?.[2]
+  const typeA = a.title.match(headerPattern)?.[2] || ''
+  const typeB = b.title.match(headerPattern)?.[2] || ''
 
   return (sortMap[typeB] || 0) - (sortMap[typeA] || 0)
 }
