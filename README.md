@@ -357,6 +357,11 @@ This repository uses Yarn 1. Installing dependencies activates the Husky 9 hooks
 
 `yarn test` builds the package and tests the CLI, commitlint configuration, Git hooks, changelog generation, dry runs, release commits, and tags in temporary Git repositories. Git must be installed.
 
+CI runs on Windows, Linux, and macOS with Node 22.13.0, current 22.x, 24.x, and 26.x.
+It includes the 11 audit regressions (`yarn test:regressions`) and a packed consumer test (`yarn build && yarn test:package`).
+The package test downloads runtime dependencies into a temporary project, checks public imports, and performs a local release.
+It does not install optional integrations, publish packages, or contact Git remotes.
+
 TypeScript is kept at 6.0.3, the latest stable version supported by the current `typescript-eslint` peer range (`>=4.8.4 <6.1.0`).
 
 ## License
