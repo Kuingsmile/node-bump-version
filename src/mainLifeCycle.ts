@@ -9,6 +9,7 @@ import commit from './commit'
 import exec from './exec'
 import { applyFileChanges, type FileChange, restoreFileChanges } from './file-changes'
 import spinner from './ora'
+import { type PushTarget, resolvePushTarget } from './push-target'
 import tag from './tag'
 import type { BumpVersionArgs } from './types/index'
 
@@ -20,6 +21,7 @@ export interface ReleasePlan {
   head: string
   branch: string
   tag: string | null
+  push: PushTarget | null
   changes: FileChange[]
 }
 
@@ -44,6 +46,7 @@ export async function planRelease(
   const branch = (await exec(argv, 'git', ['branch', '--show-current'])).trim()
   if (!branch) throw new Error('Cannot release from detached HEAD; check out a branch first')
   const head = (await exec(argv, 'git', ['rev-parse', 'HEAD'])).trim()
+  const push = argv.push ? await resolvePushTarget(argv) : null
   if (argv.tag !== false && (await exec(argv, 'git', ['tag', '--list', `v${newVersion}`])).trim()) {
     throw new Error(`Tag v${newVersion} already exists; choose another version`)
   }
@@ -80,13 +83,14 @@ export async function planRelease(
     head,
     branch,
     tag: argv.tag === false ? null : `v${newVersion}`,
+    push,
     changes,
   }
 }
 
 export async function executeRelease(argv: BumpVersionArgs, plan: ReleasePlan): Promise<void> {
   argv = { ...argv, path: plan.path }
-  for (const name of ['dry', 'tag', 'push', 'skipCommit', 'changelog', 'file'] as const) {
+  for (const name of ['dry', 'tag', 'push', 'skipCommit', 'changelog', 'file', 'remote', 'branch', 'atomic'] as const) {
     if (argv[name] !== plan.options[name]) throw new Error('Release options changed; preview again')
   }
   if (argv.dry) {
@@ -109,7 +113,7 @@ export async function executeRelease(argv: BumpVersionArgs, plan: ReleasePlan): 
     spinner.text = 'Committing changes...'
     await commit(argv, plan.newVersion)
     spinner.text = 'Creating tag...'
-    await tag(argv, plan.newVersion)
+    await tag(argv, plan.newVersion, plan.push || undefined)
     spinner.succeed('Done!')
   } catch (error) {
     spinner.fail('Failed!')

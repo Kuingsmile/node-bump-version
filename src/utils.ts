@@ -38,8 +38,12 @@ Options
   -t, --type                    Release type. [major, minor, patch, premajor, preminor, prepatch, prerelease]
                                 Default: patch
 
-  --push                        Auto push commits to origin master
+  --push                        Push the current release to its upstream (or origin/current branch)
                                 Default: false
+
+  --remote NAME                 Override the configured upstream remote
+  --branch NAME                 Override the destination branch
+  --no-atomic                   Allow a non-atomic push if the server does not support atomic pushes
 
   --no-tag                      Tag won't be created
                                 Default: tag will be created

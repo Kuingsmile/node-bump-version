@@ -192,6 +192,38 @@ test('release refuses files changed after its preview', async t => {
   assert.equal(readFileSync(join(cwd, 'CHANGELOG.md'), 'utf8'), 'Concurrent edit\n')
 })
 
+test('push releases to the upstream branch and sends only the intended tag', async t => {
+  const cwd = fixture(t)
+  const remote = fixture(t)
+  const bare = join(remote, 'remote.git')
+  git(remote, 'init', '--bare', bare)
+  git(cwd, 'remote', 'add', 'backup', bare)
+  git(cwd, 'config', 'branch.main.remote', 'backup')
+  git(cwd, 'config', 'branch.main.merge', 'refs/heads/stable')
+  git(cwd, 'tag', '-a', 'unrelated', '-m', 'unrelated tag')
+  git(cwd, 'config', 'push.followTags', 'true')
+  await mainLifeCycle({ _: [], path: cwd, push: true }, '1.0.0', '1.0.1')
+  assert.equal(git(bare, 'rev-parse', 'refs/heads/stable'), git(cwd, 'rev-parse', 'HEAD'))
+  assert.equal(git(bare, 'tag', '--list'), 'v1.0.1')
+})
+
+test('missing push targets fail during preflight and explicit destinations work without tags', async t => {
+  const cwd = fixture(t)
+  await assert.rejects(mainLifeCycle({ _: [], path: cwd, push: true }, '1.0.0', '1.0.1'), /not configured/)
+  assert.equal(git(cwd, 'status', '--porcelain'), '')
+  const remote = fixture(t)
+  const bare = join(remote, 'destination.git')
+  git(remote, 'init', '--bare', bare)
+  git(cwd, 'remote', 'add', 'destination', bare)
+  await mainLifeCycle(
+    { _: [], path: cwd, push: true, remote: 'destination', branch: 'release', tag: false },
+    '1.0.0',
+    '1.0.1',
+  )
+  assert.equal(git(bare, 'rev-parse', 'refs/heads/release'), git(cwd, 'rev-parse', 'HEAD'))
+  assert.equal(git(bare, 'tag', '--list'), '')
+})
+
 test('commitlint accepts the custom convention and rejects invalid messages', () => {
   const command = join(project, 'node_modules/@commitlint/cli/cli.js')
   for (const message of [':sparkles: Feature(core): add a feature', ':tada: Release: v1.1.0']) {

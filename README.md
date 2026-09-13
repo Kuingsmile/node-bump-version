@@ -144,7 +144,7 @@ Options
   -t, --type                    Release type. [major, minor, patch, premajor, preminor, prepatch, prerelease]
                                 Default: patch
 
-  --push                        Auto push commits to origin master
+  --push                        Push the current release to its upstream (or origin/current branch)
                                 Default: false
 
   --no-tag                      Tag won't be created
@@ -164,6 +164,11 @@ Unrelated untracked files are left alone. Dry previews can inspect uncommitted w
 All contents are prepared before writing; a failed write or commit restores the tool's changes.
 After a commit succeeds, a tag/push failure keeps that commit and reports how to finish the release.
 `--skip-commit` requires `--no-tag` and cannot be combined with `--push`.
+
+With `--push`, the upstream remote and branch are used, falling back to `origin` and the current branch.
+Override them with `--remote NAME --branch NAME`. Only the release tag is pushed, together with the release commit.
+Pushes are atomic by default. If a server lacks atomic support, finish the existing release manually;
+use `--no-atomic` for future releases only if partial remote updates are acceptable.
 
 If you reject the default next version, then you can choose which version you want or customize one.
 

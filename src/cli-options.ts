@@ -19,6 +19,9 @@ export const parseCliArgs = (args: string[]): BumpVersionArgs => {
       help: { type: 'boolean', short: 'h' },
       type: { type: 'string', short: 't' },
       push: { type: 'boolean' },
+      remote: { type: 'string' },
+      branch: { type: 'string' },
+      atomic: { type: 'boolean' },
       tag: { type: 'boolean' },
       changelog: { type: 'boolean' },
       skipCommit: { type: 'boolean' },
@@ -36,7 +39,7 @@ export const parseCliArgs = (args: string[]): BumpVersionArgs => {
   if (result['preid-alpha'] && result['preid-beta']) {
     throw new Error('Choose only one prerelease identifier: alpha or beta')
   }
-  for (const name of ['path', 'file', 'type'] as const) {
+  for (const name of ['path', 'file', 'type', 'remote', 'branch'] as const) {
     if (result[name] !== undefined && !result[name]?.trim()) throw new Error(`--${name} must not be empty`)
   }
   return result

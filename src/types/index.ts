@@ -17,6 +17,9 @@ export interface BumpVersionArgs {
   changelog?: boolean
   skipCommit?: boolean
   push?: boolean
+  remote?: string
+  branch?: string
+  atomic?: boolean
   tag?: boolean
   'no-tag'?: boolean
   'no-changelog'?: boolean
