@@ -6,6 +6,31 @@ It's now only available for Node.js projects. Thanks [@picgo/bump-version](https
 
 ## Installation
 
+For a release-only setup, install `node-bump-version` and run:
+
+```bash
+npx bump-version init
+npx bump-version doctor
+```
+
+To also configure hooks and the commit helper:
+
+```bash
+npx bump-version init --hooks --commit-helper --dry-run
+npx bump-version init --hooks --commit-helper
+npm install
+npm run prepare
+```
+
+Initialization merges missing settings and preserves existing scripts, commitlint configuration, and hooks.
+Use `--preset conventional` to configure the standard convention; the selection is saved in `package.json` under `bumpVersion.preset`.
+`doctor --json` reports missing dependencies, invalid versions, detached HEAD, and inactive hooks without making changes.
+
+Public imports are `node-bump-version/commitlint`, `/commitlint/conventional`, `/changelog`, `/changelog/conventional`, and `/commitizen`.
+For commitlint, create `commitlint.config.cjs` with `module.exports = { extends: [require.resolve('node-bump-version/commitlint')] }`.
+The `require.resolve` is needed because commitlint prefixes bare names in its `extends` array.
+Existing documented `dist/*` imports remain available.
+
 Requires **Node.js 22.13.0 or newer on the 22.x line, or Node.js 24+** (`^22.13.0 || >=24.0.0`).
 
 ```bash

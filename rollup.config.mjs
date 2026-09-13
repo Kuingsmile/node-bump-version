@@ -19,11 +19,22 @@ const external = [
   'ora',
   'semver',
   'conventional-changelog',
+  'conventional-changelog-writer',
   'conventional-commits-parser',
   '@commitlint/cli',
 ]
 
 export default [
+  ...[
+    'commitlint-node/index',
+    'commitlint-standard/index',
+    'conventional-changelog-node/index',
+    'conventional-changelog-standard/index',
+  ].map(name => ({
+    input: `src/${name}.ts`,
+    output: { file: `dist/${name}.d.ts`, format: 'es' },
+    plugins: [dts()],
+  })),
   ...[
     'commitlint-standard/index',
     'conventional-changelog-standard/index',

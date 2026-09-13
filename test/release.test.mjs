@@ -21,7 +21,14 @@ import { ConventionalChangelog } from 'conventional-changelog'
 
 import changelogPreset from '../dist/conventional-changelog-node/conventional-changelog.js'
 import preset from '../dist/conventional-changelog-node/index.js'
-import { executeRelease, mainLifeCycle, planRelease, recommendVersion } from '../dist/index.js'
+import {
+  doctorProject,
+  executeRelease,
+  initProject,
+  mainLifeCycle,
+  planRelease,
+  recommendVersion,
+} from '../dist/index.js'
 
 const project = fileURLToPath(new URL('../', import.meta.url))
 const cli = join(project, 'dist/bin/bump-version.js')
@@ -169,6 +176,55 @@ test('CLI --version works outside a package', () => {
   const result = spawnSync(process.execPath, [cli, '--version'], { cwd: tmpdir(), encoding: 'utf8' })
   assert.equal(result.status, 0)
   assert.equal(result.stdout.trim(), JSON.parse(readFileSync(join(project, 'package.json'), 'utf8')).version)
+})
+
+test('init preserves configuration, previews without writes and is idempotent', t => {
+  const cwd = fixture(t)
+  const pkg = JSON.parse(readFileSync(join(cwd, 'package.json'), 'utf8'))
+  pkg.scripts = { prepare: 'node custom-setup.js', release: 'custom-release' }
+  pkg.config = { existing: { keep: true } }
+  writeFileSync(join(cwd, 'package.json'), JSON.stringify(pkg, null, 4) + '\n')
+  const before = readFileSync(join(cwd, 'package.json'), 'utf8')
+  const options = { _: ['init'], path: cwd, hooks: true, 'commit-helper': true, preset: 'conventional' }
+  const preview = initProject({ ...options, dry: true })
+  assert.ok(preview.files.length >= 3)
+  assert.equal(readFileSync(join(cwd, 'package.json'), 'utf8'), before)
+  assert.equal(existsSync(join(cwd, '.husky')), false)
+  initProject(options)
+  const result = JSON.parse(readFileSync(join(cwd, 'package.json'), 'utf8'))
+  assert.equal(result.scripts.prepare, 'node custom-setup.js && husky')
+  assert.equal(result.scripts.release, 'custom-release')
+  assert.deepEqual(result.config.existing, { keep: true })
+  assert.equal(result.bumpVersion.preset, 'conventional')
+  assert.deepEqual(initProject(options).files, [])
+  assert.equal(doctorProject({ _: [], path: cwd }).ok, false)
+  assert.ok(doctorProject({ _: [], path: cwd }).checks.some(check => check.name === 'hooks' && !check.ok))
+  mkdirSync(join(cwd, 'node_modules'))
+  symlinkSync(project, join(cwd, 'node_modules/node-bump-version'), process.platform === 'win32' ? 'junction' : 'dir')
+  const lint = spawnSync(process.execPath, [join(project, 'node_modules/@commitlint/cli/cli.js')], {
+    cwd,
+    input: 'feat: support stable imports\n',
+    encoding: 'utf8',
+  })
+  assert.equal(lint.status, 0, lint.stdout + lint.stderr)
+})
+
+test('doctor and stable public exports work without releasing', t => {
+  const cwd = fixture(t)
+  const result = spawnSync(process.execPath, [cli, 'doctor', '--json'], { cwd, encoding: 'utf8' })
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+  assert.equal(JSON.parse(result.stdout).ok, true)
+  const imports = spawnSync(
+    process.execPath,
+    [
+      '--input-type=module',
+      '-e',
+      "await import('node-bump-version/commitlint'); await import('node-bump-version/changelog/conventional'); await import('node-bump-version/dist/index.js');",
+    ],
+    { cwd: project, encoding: 'utf8' },
+  )
+  assert.equal(imports.status, 0, imports.stderr)
+  assert.equal(git(cwd, 'status', '--porcelain'), '')
 })
 
 test('automatic recommendations drive the CLI and explain breaking custom commits', t => {

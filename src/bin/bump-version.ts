@@ -7,6 +7,7 @@ import * as semver from 'semver'
 import { parseCliArgs } from '../cli-options.js'
 import { executeRelease, planRelease, type ReleasePlan } from '../mainLifeCycle.js'
 import { recommendVersion, type VersionRecommendation } from '../recommend-version.js'
+import { doctorProject, initProject } from '../setup.js'
 import type { BumpVersionArgs, PackageJson, ReleaseChoice, ReleaseType } from '../types/index.js'
 import { helperMsg } from '../utils.js'
 
@@ -51,6 +52,25 @@ async function main(): Promise<void> {
     return
   }
   let pkg: PackageJson
+  if (argv._[0] === 'init') {
+    const result = initProject(argv)
+    console.log(
+      argv.json
+        ? JSON.stringify({ ok: true, ...result })
+        : `${result.dryRun ? 'Would update' : 'Updated'}: ${result.files.join(', ') || 'already configured'}\n${result.nextSteps.join('\n')}`,
+    )
+    return
+  }
+  if (argv._[0] === 'doctor') {
+    const result = doctorProject(argv)
+    console.log(
+      argv.json
+        ? JSON.stringify(result)
+        : result.checks.map(check => `${check.ok ? 'PASS' : 'FAIL'} ${check.name}: ${check.message}`).join('\n'),
+    )
+    if (!result.ok) process.exitCode = 1
+    return
+  }
   try {
     pkg = JSON.parse(readFileSync(resolve(argv.path || '.', 'package.json'), 'utf8'))
   } catch (error) {
@@ -59,6 +79,9 @@ async function main(): Promise<void> {
     })
   }
   if (!pkg || typeof pkg !== 'object' || Array.isArray(pkg)) throw new Error('package.json must contain an object!')
+  if (pkg.bumpVersion?.preset !== undefined && !['emoji', 'conventional'].includes(pkg.bumpVersion.preset))
+    throw new Error('Invalid bumpVersion.preset in package.json')
+  argv.preset ??= pkg.bumpVersion?.preset
   if (typeof pkg.version !== 'string' || !semver.valid(pkg.version)) throw new Error('Invalid version in package.json!')
   const currentVersion = pkg.version
   if (argv.type === 'auto') recommendation = await recommendVersion(argv)

@@ -3,10 +3,10 @@ import { parseArgs } from 'node:util'
 import type { BumpVersionArgs } from './types/index'
 
 export const parseCliArgs = (args: string[]): BumpVersionArgs => {
-  const { values, tokens } = parseArgs({
+  const { values, tokens, positionals } = parseArgs({
     args,
     strict: true,
-    allowPositionals: false,
+    allowPositionals: true,
     allowNegative: true,
     tokens: true,
     options: {
@@ -24,6 +24,8 @@ export const parseCliArgs = (args: string[]): BumpVersionArgs => {
       interactive: { type: 'boolean' },
       preid: { type: 'string' },
       preset: { type: 'string' },
+      hooks: { type: 'boolean' },
+      'commit-helper': { type: 'boolean' },
       push: { type: 'boolean' },
       remote: { type: 'string' },
       branch: { type: 'string' },
@@ -37,7 +39,11 @@ export const parseCliArgs = (args: string[]): BumpVersionArgs => {
   const { preset, ...otherValues } = values
   if (preset !== undefined && preset !== 'emoji' && preset !== 'conventional')
     throw new Error('--preset must be emoji or conventional')
-  const result: BumpVersionArgs = { _: [], ...otherValues, preset }
+  if (positionals.length > 1 || (positionals.length && !['init', 'doctor'].includes(positionals[0])))
+    throw new Error('Unexpected positional argument; supported commands are init and doctor')
+  const result: BumpVersionArgs = { _: positionals, ...otherValues, preset }
+  if (positionals[0] !== 'init' && (result.hooks || result['commit-helper']))
+    throw new Error('--hooks and --commit-helper require init')
   // Aliases share one value, including when a later --no-* reverses it.
   for (const token of tokens) {
     if (token.kind !== 'option') continue

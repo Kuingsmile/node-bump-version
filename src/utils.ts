@@ -16,6 +16,8 @@ BumpVersion -- By Kuingsmile
 
 Usage
   bump-version
+  bump-version init [--hooks] [--commit-helper] [--dry-run]
+  bump-version doctor [--json]
 
 Example
   bump-version -t major
