@@ -19,7 +19,7 @@
     "bump-version": "./dist/bin/bump-version.js"
   },
   "scripts": {
-    "build": "rollup -c",
+    "build": "rollup -c --forceExit",
     "clean": "rimraf dist",
     "cz": "git-cz",
     "dev": "rollup -c --watch",

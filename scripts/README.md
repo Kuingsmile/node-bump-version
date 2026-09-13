@@ -15,9 +15,14 @@ project's engine requirement, Git, and npm must be installed.
 
 `REPRODUCED` means the bug exists. Exit code **0** means all selected bugs were
 reproduced; exit code **1** means at least one result differed or a harness error
-occurred. This is an opt-in audit tool, not a correctness test suite. A future fix
-can make a case report `NOT REPRODUCED`; inspect its observations before concluding
-that the issue is fixed. `ERROR` means the scenario could not be evaluated.
+occurred. `FIXED` means the result matches the expected correct behavior and its
+supporting assertions passed. `NOT REPRODUCED` means an unexpected result that
+requires investigation. `ERROR` means the scenario could not be evaluated.
+
+To verify fixes, use `node scripts/reproduce-bugs.mjs --verify-fixed` or
+`yarn reproduce:bugs --verify-fixed`. In this mode, exit code **0** requires every
+selected case to report `FIXED`; any reproduced bug, unexpected result, or error
+returns exit code **1**.
 
 Case 10 uses the project's current commit-message hook and legacy configuration
 when present. It checks both valid and invalid commits, so a modern Husky migration

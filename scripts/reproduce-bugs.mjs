@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// This is an opt-in reproduction suite, not a test of correct release behavior.
-// Exit 0 means every selected bug was reproduced; 1 means a mismatch or error.
+// Default: exit 0 when all selected bugs reproduce. With --verify-fixed: exit 0
+// only when all selected cases match the expected correct behavior.
 import assert from 'node:assert/strict'
 import { execFileSync, fork, spawn, spawnSync } from 'node:child_process'
 import {
@@ -402,6 +402,13 @@ const cases = [
       validMessageAccepted: true,
       commitMsgHookExists: false,
     },
+    fixed: {
+      legacyConfigurationPresent: false,
+      invalidCommitAccepted: false,
+      directLintRejects: true,
+      validMessageAccepted: true,
+      commitMsgHookExists: true,
+    },
     async run() {
       const cwd = fixture('husky-hooks')
       const pkg = readJson(join(cwd, 'package.json'))
@@ -544,7 +551,7 @@ async function main() {
     },
   })
   if (values.help) {
-    console.log('Usage: node scripts/reproduce-bugs.mjs [--case 1] [--case 2] [--skip-build] [--temp-dir PATH]')
+    console.log('Usage: node scripts/reproduce-bugs.mjs [--case 1] [--verify-fixed] [--skip-build] [--temp-dir PATH]')
     console.log('Builds first, then checks all 11 bugs in fresh temporary repositories. Requires Git and npm.')
     console.log('Exit 0: all selected bugs reproduced. Exit 1: mismatch or harness error. Fixtures are retained.')
     console.log('--verify-fixed: exit 0 only when every selected case matches its verified correct behavior.')
@@ -579,7 +586,7 @@ async function main() {
   assert.ok(ids.length && ids.every(id => cases.some(item => item.id === id)), '--case must be a number from 1 to 11')
   if (!values['skip-build']) {
     console.log('Building current source...')
-    execFileSync(process.execPath, [join(project, 'node_modules/rollup/dist/bin/rollup'), '-c'], {
+    execFileSync(process.execPath, [join(project, 'node_modules/rollup/dist/bin/rollup'), '-c', '--forceExit'], {
       cwd: project,
       stdio: 'pipe',
       timeout: 120000,
