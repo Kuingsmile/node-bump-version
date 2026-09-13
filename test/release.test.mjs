@@ -91,6 +91,48 @@ function assertChangelog(content, version) {
   assert.doesNotMatch(content, /initial release/)
 }
 
+function windowsShortPath(t, cwd) {
+  const short = execFileSync('cmd.exe', ['/d', '/c', 'for %I in (.) do @echo %~fsI'], {
+    cwd,
+    encoding: 'utf8',
+  }).trim()
+  if (short.toLowerCase() === realpathSync.native(cwd).toLowerCase()) {
+    t.skip('Windows short filenames are disabled on this volume')
+    return null
+  }
+  return short
+}
+
+test(
+  'release accepts Windows short paths for the package directory',
+  { skip: process.platform !== 'win32' },
+  async t => {
+    const cwd = fixture(t)
+    const short = windowsShortPath(t, cwd)
+    if (!short) return
+    const argv = { _: [], path: short, json: true }
+    const preview = await planRelease({ ...argv, dry: true }, '1.0.0', '1.0.1')
+    assert.equal(preview.path, realpathSync.native(cwd))
+    assert.equal(git(cwd, 'status', '--porcelain'), '')
+    await mainLifeCycle(argv, '1.0.0', '1.0.1')
+    assert.equal(JSON.parse(readFileSync(join(cwd, 'package.json'), 'utf8')).version, '1.0.1')
+    assert.equal(git(cwd, 'tag', '--list', 'v1.0.1'), 'v1.0.1')
+    assert.equal(git(cwd, 'status', '--porcelain'), '')
+  },
+)
+
+test('init accepts Windows short paths at the Git root', { skip: process.platform !== 'win32' }, t => {
+  const cwd = fixture(t)
+  const short = windowsShortPath(t, cwd)
+  if (!short) return
+  const options = { _: ['init'], path: short, hooks: true }
+  assert.ok(initProject({ ...options, dry: true }).files.length > 0)
+  assert.equal(git(cwd, 'status', '--porcelain'), '')
+  initProject(options)
+  assert.match(readFileSync(join(cwd, '.husky/commit-msg'), 'utf8'), /commitlint/)
+  assert.deepEqual(initProject(options).files, [])
+})
+
 function runCli(t, cwd, args, steps) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [cli, '--interactive', ...args], { cwd, stdio: 'pipe' })

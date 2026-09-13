@@ -34,8 +34,13 @@ for (const directory of [dirname(process.execPath), ...(process.env.PATH || proc
 const npm = candidates.find(candidate => candidate && /[/\\]npm-cli\.js$/.test(candidate) && existsSync(candidate))
 assert.ok(npm, 'npm-cli.js must be available')
 try {
+  // npm 10 still runs prepare with --ignore-scripts; keep its output out of the JSON.
   const [pack] = JSON.parse(
-    run(process.execPath, [npm, 'pack', '--ignore-scripts', '--json', '--pack-destination', root], project),
+    run(
+      process.execPath,
+      [npm, 'pack', '--ignore-scripts', '--foreground-scripts=false', '--json', '--pack-destination', root],
+      project,
+    ),
   )
   assert.ok(pack.files.every(file => !/^(src\/|scripts\/|test\/|eslint|rollup)/.test(file.path)))
   for (const file of [

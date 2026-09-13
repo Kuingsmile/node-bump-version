@@ -18,7 +18,7 @@ function readPackage(path: string): { before: string; pkg: PackageJson } {
 }
 
 export function initProject(argv: BumpVersionArgs): { files: string[]; dryRun: boolean; nextSteps: string[] } {
-  const path = realpathSync(resolve(argv.path || '.'))
+  const path = realpathSync.native(resolve(argv.path || '.'))
   const { before, pkg } = readPackage(path)
   for (const name of ['scripts', 'config', 'dependencies', 'devDependencies', 'bumpVersion'] as const) {
     const value = pkg[name]
@@ -43,7 +43,7 @@ export function initProject(argv: BumpVersionArgs): { files: string[]; dryRun: b
   }
   if (argv.hooks) {
     const root = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: path, encoding: 'utf8' })
-    if (root.status !== 0 || realpathSync(root.stdout.trim()) !== path)
+    if (root.status !== 0 || realpathSync.native(root.stdout.trim()) !== path)
       throw new Error('Run init --hooks at the Git root')
     dev('husky')
     dev('@commitlint/cli')

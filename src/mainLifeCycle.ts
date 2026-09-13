@@ -37,12 +37,13 @@ export async function planRelease(
   if (argv.skipCommit && (argv.tag !== false || argv.push)) {
     throw new Error('--skip-commit requires --no-tag and cannot be combined with --push')
   }
-  const path = realpathSync(resolve(argv.path || '.'))
+  // Native resolution expands Windows short names so paths agree with Git's output.
+  const path = realpathSync.native(resolve(argv.path || '.'))
   argv = { ...argv, path }
   const changes = prepareVersionFiles(argv, newVersion)
   if (JSON.parse(changes[0].before!).version !== currentVersion)
     throw new Error('Package version changed; preview again')
-  const root = realpathSync((await exec(argv, 'git', ['rev-parse', '--show-toplevel'])).trim())
+  const root = realpathSync.native((await exec(argv, 'git', ['rev-parse', '--show-toplevel'])).trim())
   const branch = (await exec(argv, 'git', ['branch', '--show-current'])).trim()
   if (!branch) throw new Error('Cannot release from detached HEAD; check out a branch first')
   const head = (await exec(argv, 'git', ['rev-parse', 'HEAD'])).trim()
@@ -54,7 +55,7 @@ export async function planRelease(
   if (changelog) changes.push(changelog)
   const unique = new Set<string>()
   for (const change of changes) {
-    const parent = realpathSync(dirname(change.path))
+    const parent = realpathSync.native(dirname(change.path))
     const location = relative(root, parent)
     if (isAbsolute(location) || location === '..' || location.startsWith(`..${sep}`)) {
       throw new Error('Release files must be inside the Git repository')
