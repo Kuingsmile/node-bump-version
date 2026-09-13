@@ -13,14 +13,14 @@ const commit = async (argv: BumpVersionArgs, newVersion: string): Promise<string
 
   if ((argv as any).skipCommit) return Promise.resolve()
 
-  const changedFilesStr = checkFileAndGetPath(argv, changedFiles).join(' ')
+  const files = checkFileAndGetPath(argv, changedFiles)
 
-  if (changedFilesStr === '' || argv.dry) {
+  if (files.length === 0 || argv.dry) {
     return Promise.resolve()
   }
 
-  await exec(argv, `git add ${changedFilesStr}`)
-  return await exec(argv, `git commit ${changedFilesStr} -m "${releaseMsg}"`)
+  await exec(argv, 'git', ['--literal-pathspecs', 'add', '--', ...files])
+  return await exec(argv, 'git', ['--literal-pathspecs', 'commit', '-m', releaseMsg, '--', ...files])
 }
 
 export default commit

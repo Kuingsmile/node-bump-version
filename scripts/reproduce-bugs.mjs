@@ -140,6 +140,7 @@ const cases = [
     title: 'Shell injection and paths containing spaces',
     correct: 'Spaces and shell characters are literal filenames; no command executes.',
     buggy: { spacesRejectedByGit: true, versionChangedBeforeFailure: '1.0.1', harmlessEchoExecuted: true },
+    fixed: { spacesRejectedByGit: false, versionChangedBeforeFailure: '1.0.1', harmlessEchoExecuted: false },
     async run() {
       const spaced = fixture('repo with spaces')
       process.chdir(spaced)
@@ -149,16 +150,26 @@ const cases = [
       } catch (error) {
         failure = error
       }
+      if (failure) assert.match(failure.message, /outside repository|pathspec/)
+      else {
+        assert.equal(JSON.parse(git(spaced, 'show', 'v1.0.1:package.json')).version, '1.0.1')
+        assert.equal(git(spaced, 'status', '--porcelain'), '')
+      }
       const cwd = fixture('shell-filename')
       process.chdir(cwd)
       const marker = 'REPRODUCE_HARMLESS_ECHO'
       const file = process.platform === 'win32' ? `CHANGE&echo ${marker}&rem .md` : `CHANGE;echo ${marker};#.md`
       writeFileSync(join(cwd, file), 'Synthetic changelog\n')
       const output = await api.commit({ _: [], path: cwd, file }, '1.0.1')
+      const harmlessEchoExecuted = (output || '').split(/\r?\n/).some(line => line.trim() === marker)
+      if (!harmlessEchoExecuted) {
+        assert.equal(git(cwd, 'show', `HEAD:${file}`), 'Synthetic changelog')
+        assert.equal(git(cwd, 'status', '--porcelain'), '')
+      }
       return {
         spacesRejectedByGit: /outside repository|pathspec/.test(failure?.message || ''),
         versionChangedBeforeFailure: version(spaced),
-        harmlessEchoExecuted: (output || '').split(/\r?\n/).some(line => line.trim() === marker),
+        harmlessEchoExecuted,
       }
     },
   },
@@ -468,6 +479,7 @@ async function main() {
       help: { type: 'boolean', short: 'h' },
       case: { type: 'string', multiple: true },
       'skip-build': { type: 'boolean' },
+      'verify-fixed': { type: 'boolean' },
       'temp-dir': { type: 'string' },
       worker: { type: 'string' },
       root: { type: 'string' },
@@ -477,6 +489,7 @@ async function main() {
     console.log('Usage: node scripts/reproduce-bugs.mjs [--case 1] [--case 2] [--skip-build] [--temp-dir PATH]')
     console.log('Builds first, then checks all 11 bugs in fresh temporary repositories. Requires Git and npm.')
     console.log('Exit 0: all selected bugs reproduced. Exit 1: mismatch or harness error. Fixtures are retained.')
+    console.log('--verify-fixed: exit 0 only when every selected case matches its verified correct behavior.')
     for (const item of cases) console.log(`${item.id}. [${item.severity}] ${item.title}`)
     return
   }
@@ -493,7 +506,11 @@ async function main() {
         id,
         severity: item.severity,
         title: item.title,
-        status: isDeepStrictEqual(observed, item.buggy) ? 'REPRODUCED' : 'NOT REPRODUCED',
+        status: isDeepStrictEqual(observed, item.buggy)
+          ? 'REPRODUCED'
+          : isDeepStrictEqual(observed, item.fixed)
+            ? 'FIXED'
+            : 'NOT REPRODUCED',
         correctBehavior: item.correct,
         observed,
       })
@@ -554,12 +571,14 @@ async function main() {
     if (result.correctBehavior) console.log(`  Expected: ${result.correctBehavior}`)
   }
   const reproduced = results.filter(result => result.status === 'REPRODUCED').length
+  const fixed = results.filter(result => result.status === 'FIXED').length
   writeJson(join(root, 'results.json'), { node: process.version, platform: process.platform, control, results })
   console.log(
     `\n${reproduced}/${results.length} reported bugs reproduced. A reproduced bug is not a passing correctness test.`,
   )
   console.log(`Evidence and repositories retained at: ${root}`)
-  if (reproduced !== results.length) process.exitCode = 1
+  console.log(`${fixed}/${results.length} cases verified fixed.`)
+  if (values['verify-fixed'] ? fixed !== results.length : reproduced !== results.length) process.exitCode = 1
 }
 
 try {
