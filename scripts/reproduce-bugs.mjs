@@ -314,11 +314,13 @@ const cases = [
     title: 'Relative --path is resolved twice during Git operations',
     correct: 'A relative target path releases successfully with no uncommitted files.',
     buggy: { failedWithPathspec: true, targetVersion: '1.0.1', headUnchanged: true, filesLeftDirty: true },
+    fixed: { failedWithPathspec: false, targetVersion: '1.0.1', headUnchanged: false, filesLeftDirty: false },
     async run() {
       const caller = fixture('relative-caller')
       const target = fixture('relative-caller/child')
       const head = git(target, 'rev-parse', 'HEAD')
       const result = await runCli(caller, ['--path', 'child', '--no-changelog', '--no-tag'])
+      if (!/pathspec/.test(result.output)) succeeded(result)
       return {
         failedWithPathspec: result.code !== 0 && /pathspec/.test(result.output),
         targetVersion: version(target),

@@ -5,12 +5,7 @@ import { BumpVersionArgs } from './types/index'
 
 export const checkFileAndGetPath = (argv: BumpVersionArgs, files: string[]): string[] => {
   return files
-    .map((item: string) => {
-      if (path.isAbsolute(item)) {
-        return item
-      }
-      return path.join(argv.path || './', item)
-    })
+    .map((item: string) => path.resolve(argv.path || './', item))
     .filter((item: string) => {
       return fs.existsSync(item)
     })
