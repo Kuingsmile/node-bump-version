@@ -290,10 +290,17 @@ const cases = [
     title: 'Changelog is written in the caller directory',
     correct: 'Only the target changelog is updated and included in the release tag.',
     buggy: { callerChangelogChanged: true, targetChangelogUnchanged: true, taggedChangelogUnchanged: true },
+    fixed: { callerChangelogChanged: false, targetChangelogUnchanged: false, taggedChangelogUnchanged: false },
     async run() {
       const caller = fixture('changelog-caller')
       const target = fixture('changelog-target')
       succeeded(await runCli(caller, ['--path', target]))
+      if (readChangelog(target) !== previousChangelog) {
+        assert.ok(readChangelog(target).includes(':tada: 1.0.1'))
+        assert.ok(readChangelog(target).endsWith(previousChangelog))
+        assert.equal(git(target, 'show', 'v1.0.1:CHANGELOG.md'), readChangelog(target).trim())
+        assert.equal(git(caller, 'status', '--porcelain'), '')
+      }
       return {
         callerChangelogChanged: readChangelog(caller).includes('1.0.1'),
         targetChangelogUnchanged: readChangelog(target) === previousChangelog,

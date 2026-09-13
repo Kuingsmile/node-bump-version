@@ -12,9 +12,10 @@ const changelog = async (argv: BumpVersionArgs, newVersion: string): Promise<voi
   }
 
   let oldContent: string
+  const changelogFile = path.resolve(argv.path || './', argv.file || 'CHANGELOG.md')
 
   try {
-    oldContent = fs.readFileSync(argv.file || 'CHANGELOG.md', 'utf8')
+    oldContent = fs.readFileSync(changelogFile, 'utf8')
   } catch (e) {
     oldContent = ''
   }
@@ -37,7 +38,7 @@ const changelog = async (argv: BumpVersionArgs, newVersion: string): Promise<voi
     console.log('Changelog is:')
     console.log(content + oldContent)
   } else {
-    fs.writeFileSync(argv.file || 'CHANGELOG.md', content + oldContent)
+    fs.writeFileSync(changelogFile, content + oldContent)
   }
 }
 
