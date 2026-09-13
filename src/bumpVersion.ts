@@ -1,4 +1,5 @@
 import * as fs from 'node:fs'
+import { basename } from 'node:path'
 
 import * as semver from 'semver'
 
@@ -17,6 +18,10 @@ const bumpVersion = (argv: BumpVersionArgs, version: string): Promise<void> => {
     try {
       const parsedContent: PackageJson = JSON.parse(content)
       parsedContent.version = version
+      const rootPackage = parsedContent.packages?.['']
+      if (basename(file) === 'package-lock.json' && rootPackage && typeof rootPackage === 'object') {
+        rootPackage.version = version
+      }
       const updatedContent = JSON.stringify(parsedContent, null, 2) + '\n'
 
       if (argv.dry) {

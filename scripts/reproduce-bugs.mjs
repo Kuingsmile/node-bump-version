@@ -340,13 +340,23 @@ const cases = [
       topLevel: '1.0.1',
       rootPackage: '1.0.0',
     })),
+    fixed: [2, 3].map(lockfileVersion => ({
+      lockfileVersion,
+      manifest: '1.0.1',
+      topLevel: '1.0.1',
+      rootPackage: '1.0.1',
+    })),
     async run() {
       const observations = []
       for (const lockfileVersion of [2, 3]) {
         const cwd = fixture(`lockfile-v${lockfileVersion}`, '1.0.0', lockfileVersion)
         process.chdir(cwd)
+        const originalLock = readJson(join(cwd, 'package-lock.json'))
+        originalLock.packages['node_modules/dependency'] = { version: '9.8.7' }
+        writeJson(join(cwd, 'package-lock.json'), originalLock)
         await api.bumpVersion({ _: [], path: cwd }, '1.0.1')
         const lock = readJson(join(cwd, 'package-lock.json'))
+        assert.equal(lock.packages['node_modules/dependency'].version, '9.8.7')
         observations.push({
           lockfileVersion,
           manifest: version(cwd),
