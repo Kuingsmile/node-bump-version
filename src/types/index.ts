@@ -12,6 +12,11 @@ export interface BumpVersionArgs {
   path?: string
   help?: boolean
   type?: string
+  yes?: boolean
+  json?: boolean
+  version?: boolean
+  interactive?: boolean
+  preid?: string
   'preid-alpha'?: boolean
   'preid-beta'?: boolean
   changelog?: boolean

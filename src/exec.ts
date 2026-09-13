@@ -10,10 +10,10 @@ const execCommand = (argv: BumpVersionArgs, cmd: string, args?: string[]): Promi
       // If exec returns content in stderr, but no error, print it as a warning
       // If exec returns an error, print it and exit with return code 1
       if (err) {
-        logger(stderr || err.message, 'error')
-        return reject(err)
+        if (!argv.json) logger(stderr || err.message, 'error')
+        return reject(new Error(stderr.trim() || err.message, { cause: err }))
       } else if (stderr) {
-        logger(stderr, 'warn')
+        if (!argv.json) logger(stderr, 'warn')
       }
       return resolve(stdout)
     }

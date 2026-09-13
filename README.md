@@ -183,6 +183,23 @@ npm.cmd run release -- --dry
 
 ## Convention
 
+### Automation and previews
+
+```bash
+bump-version --dry-run --json
+bump-version --type minor --yes
+bump-version --type preminor --preid rc --yes --json
+bump-version --version
+```
+
+Dry runs do not prompt unless `--interactive` is supplied. Real releases in CI or with piped input require `--yes`.
+`--json` writes one JSON result to stdout, without spinner output; real JSON releases also require `--yes`.
+The result includes `ok`, `dryRun`, versions, changed file paths, branch, tag, and push destination.
+Failures return `{ "ok": false, "error": { "code": "RELEASE_FAILED", "message": "..." } }` and exit 1.
+Interrupting an interactive prompt exits 130. The preview describes the release before confirmation.
+
+## Commit conventions
+
 ### Git Commit Message
 
 - Use the present tense ("add feature" not "added feature")

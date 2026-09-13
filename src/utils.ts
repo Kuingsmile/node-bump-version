@@ -35,6 +35,12 @@ Options
 
   -h, --help                    Display help message
 
+  -v, --version                 Display the tool version
+  -y, --yes                     Accept the calculated release without prompting
+  --json                        Emit one JSON result (use --yes for a real release)
+  --interactive                 Explicitly enable prompts when input is piped
+  --preid ID                    Prerelease identifier, such as rc
+
   -t, --type                    Release type. [major, minor, patch, premajor, preminor, prepatch, prerelease]
                                 Default: patch
 

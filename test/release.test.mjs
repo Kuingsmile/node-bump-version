@@ -86,7 +86,7 @@ function assertChangelog(content, version) {
 
 function runCli(t, cwd, args, steps) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [cli, ...args], { cwd, stdio: 'pipe' })
+    const child = spawn(process.execPath, [cli, '--interactive', ...args], { cwd, stdio: 'pipe' })
     let output = ''
     let next = 0
     const timeout = setTimeout(() => {
@@ -139,6 +139,36 @@ test('CLI accepts --dry-run as a safe alias for --dry', async t => {
   await runCli(t, cwd, ['--dry-run'], [{ prompt: 'is it right?', input: 'y\n' }])
   assert.equal(git(cwd, 'status', '--porcelain'), '')
   assert.equal(git(cwd, 'tag', '--list'), 'v1.0.0')
+})
+
+test('CLI supports machine-readable previews, noninteractive releases and custom prerelease ids', t => {
+  const cwd = fixture(t)
+  const run = args => spawnSync(process.execPath, [cli, ...args], { cwd, encoding: 'utf8', timeout: 10000 })
+  const preview = run(['--dry-run', '--json', '--type', 'preminor', '--preid', 'rc'])
+  assert.equal(preview.status, 0, preview.stderr)
+  const plan = JSON.parse(preview.stdout)
+  assert.equal(plan.newVersion, '1.1.0-rc.0')
+  assert.equal(plan.dryRun, true)
+  assert.equal(plan.branch, 'main')
+  assert.deepEqual(plan.files, ['package.json', 'package-lock.json', 'CHANGELOG.md'])
+  assert.equal(git(cwd, 'status', '--porcelain'), '')
+  const unattended = run([])
+  assert.equal(unattended.status, 1)
+  assert.match(unattended.stderr, /require --yes/)
+  const invalid = run(['--json', '--invalid'])
+  assert.equal(invalid.status, 1)
+  assert.equal(JSON.parse(invalid.stdout).ok, false)
+  const release = run(['--yes', '--json'])
+  assert.equal(release.status, 0, release.stdout + release.stderr)
+  assert.equal(JSON.parse(release.stdout).newVersion, '1.0.1')
+  assert.equal(release.stderr, '')
+  assert.equal(git(cwd, 'tag', '--list'), 'v1.0.0\nv1.0.1')
+})
+
+test('CLI --version works outside a package', () => {
+  const result = spawnSync(process.execPath, [cli, '--version'], { cwd: tmpdir(), encoding: 'utf8' })
+  assert.equal(result.status, 0)
+  assert.equal(result.stdout.trim(), JSON.parse(readFileSync(join(project, 'package.json'), 'utf8')).version)
 })
 
 test('release preflight rejects duplicate tags, invalid lockfiles and unsafe options without writes', async t => {

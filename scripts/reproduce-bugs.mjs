@@ -110,7 +110,7 @@ function runNode(cwd, file, args = [], confirm = true) {
   })
 }
 
-const runCli = (cwd, args = [], confirm = true) => runNode(cwd, cli, args, confirm)
+const runCli = (cwd, args = [], confirm = true) => runNode(cwd, cli, ['--yes', ...args], confirm)
 function succeeded(result) {
   assert.equal(result.code, 0, 'Fixture command must succeed before checking its effects')
 }

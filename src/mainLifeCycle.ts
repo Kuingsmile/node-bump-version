@@ -94,8 +94,10 @@ export async function executeRelease(argv: BumpVersionArgs, plan: ReleasePlan): 
     if (argv[name] !== plan.options[name]) throw new Error('Release options changed; preview again')
   }
   if (argv.dry) {
-    console.log('bump version to:', plan.newVersion)
-    if (argv.changelog !== false) console.log('Changelog is:\n' + plan.changes.at(-1)!.after)
+    if (!argv.json) {
+      console.log('bump version to:', plan.newVersion)
+      if (argv.changelog !== false) console.log('Changelog is:\n' + plan.changes.at(-1)!.after)
+    }
     return
   }
   if ((await exec(argv, 'git', ['rev-parse', 'HEAD'])).trim() !== plan.head)
@@ -105,7 +107,7 @@ export async function executeRelease(argv: BumpVersionArgs, plan: ReleasePlan): 
   }
   if (plan.tag && (await exec(argv, 'git', ['tag', '--list', plan.tag])).trim())
     throw new Error('Tag appeared after preview')
-  spinner.start('Writing release files...')
+  if (!argv.json) spinner.start('Writing release files...')
   let written = false
   try {
     applyFileChanges(plan.changes)
@@ -114,9 +116,9 @@ export async function executeRelease(argv: BumpVersionArgs, plan: ReleasePlan): 
     await commit(argv, plan.newVersion)
     spinner.text = 'Creating tag...'
     await tag(argv, plan.newVersion, plan.push || undefined)
-    spinner.succeed('Done!')
+    if (!argv.json) spinner.succeed('Done!')
   } catch (error) {
-    spinner.fail('Failed!')
+    if (!argv.json) spinner.fail('Failed!')
     const head = (await exec(argv, 'git', ['rev-parse', 'HEAD'])).trim()
     if (head !== plan.head) {
       throw new Error(

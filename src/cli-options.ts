@@ -18,6 +18,11 @@ export const parseCliArgs = (args: string[]): BumpVersionArgs => {
       path: { type: 'string', short: 'p' },
       help: { type: 'boolean', short: 'h' },
       type: { type: 'string', short: 't' },
+      yes: { type: 'boolean', short: 'y' },
+      json: { type: 'boolean' },
+      version: { type: 'boolean', short: 'v' },
+      interactive: { type: 'boolean' },
+      preid: { type: 'string' },
       push: { type: 'boolean' },
       remote: { type: 'string' },
       branch: { type: 'string' },
@@ -36,11 +41,13 @@ export const parseCliArgs = (args: string[]): BumpVersionArgs => {
     if (name === 'dry' || name === 'dry-run') result.dry = !token.name.startsWith('no-')
     if (name === 'skipCommit' || name === 'skip-commit') result.skipCommit = !token.name.startsWith('no-')
   }
-  if (result['preid-alpha'] && result['preid-beta']) {
-    throw new Error('Choose only one prerelease identifier: alpha or beta')
+  if ([result['preid-alpha'], result['preid-beta'], result.preid !== undefined].filter(Boolean).length > 1) {
+    throw new Error('Choose only one prerelease identifier')
   }
-  for (const name of ['path', 'file', 'type', 'remote', 'branch'] as const) {
+  for (const name of ['path', 'file', 'type', 'remote', 'branch', 'preid'] as const) {
     if (result[name] !== undefined && !result[name]?.trim()) throw new Error(`--${name} must not be empty`)
   }
+  if (result.interactive && (result.yes || result.json))
+    throw new Error('--interactive cannot be combined with --yes or --json')
   return result
 }
