@@ -200,6 +200,15 @@ Interrupting an interactive prompt exits 130. The preview describes the release 
 
 ## Commit conventions
 
+Use `--type auto` to choose major, minor, or patch from commits since the latest reachable version tag.
+The preview and JSON result include the reason. An empty release history requires an explicit release type.
+The default remains `--type patch` and the existing emoji convention.
+
+For standard `feat:`, `fix:`, and `refactor!:` commits, use `--preset conventional --type auto`.
+That preset supports both `BREAKING CHANGE:` and `BREAKING-CHANGE:` footers on any commit type.
+Use the matching commitlint configuration at `node-bump-version/dist/commitlint-standard/index.js`.
+It creates release messages such as `chore(release): v1.2.0`.
+
 ### Git Commit Message
 
 - Use the present tense ("add feature" not "added feature")

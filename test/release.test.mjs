@@ -21,7 +21,7 @@ import { ConventionalChangelog } from 'conventional-changelog'
 
 import changelogPreset from '../dist/conventional-changelog-node/conventional-changelog.js'
 import preset from '../dist/conventional-changelog-node/index.js'
-import { executeRelease, mainLifeCycle, planRelease } from '../dist/index.js'
+import { executeRelease, mainLifeCycle, planRelease, recommendVersion } from '../dist/index.js'
 
 const project = fileURLToPath(new URL('../', import.meta.url))
 const cli = join(project, 'dist/bin/bump-version.js')
@@ -169,6 +169,43 @@ test('CLI --version works outside a package', () => {
   const result = spawnSync(process.execPath, [cli, '--version'], { cwd: tmpdir(), encoding: 'utf8' })
   assert.equal(result.status, 0)
   assert.equal(result.stdout.trim(), JSON.parse(readFileSync(join(project, 'package.json'), 'utf8')).version)
+})
+
+test('automatic recommendations drive the CLI and explain breaking custom commits', t => {
+  const cwd = fixture(t)
+  const result = spawnSync(process.execPath, [cli, '--type', 'auto', '--dry-run', '--json'], { cwd, encoding: 'utf8' })
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+  const output = JSON.parse(result.stdout)
+  assert.equal(output.newVersion, '2.0.0')
+  assert.equal(output.recommendation.type, 'major')
+  assert.match(output.recommendation.reason, /1 BREAKING CHANGE/)
+})
+
+test('conventional preset supports feat, fix, breaking ! headers and commitlint', async t => {
+  const cwd = fixture(t)
+  git(cwd, 'tag', '-f', 'v1.0.0')
+  git(cwd, 'commit', '--allow-empty', '-m', 'feat(core): introduce a standard feature')
+  const argv = { _: [], path: cwd, preset: 'conventional' }
+  assert.equal((await recommendVersion(argv)).type, 'minor')
+  git(cwd, 'commit', '--allow-empty', '-m', 'refactor(api)!: replace the interface')
+  assert.equal((await recommendVersion(argv)).type, 'major')
+  const config = join(project, 'dist/commitlint-standard/index.js')
+  const lint = message =>
+    spawnSync(process.execPath, [join(project, 'node_modules/@commitlint/cli/cli.js'), '--config', config], {
+      cwd,
+      encoding: 'utf8',
+      input: message + '\n',
+    })
+  assert.equal(lint('feat(core): introduce a standard feature').status, 0)
+  assert.equal(lint('refactor(api)!: replace the interface').status, 0)
+  assert.equal(lint('invalid message').status, 1)
+  await mainLifeCycle(argv, '1.0.0', '2.0.0')
+  const content = readFileSync(join(cwd, 'CHANGELOG.md'), 'utf8')
+  assert.match(content, /introduce a standard feature/)
+  assert.match(content, /BREAKING CHANGES/)
+  assert.match(content, /replace the interface/)
+  assert.equal(git(cwd, 'log', '-1', '--format=%s'), 'chore(release): v2.0.0')
+  await assert.rejects(recommendVersion(argv), /No commits since/)
 })
 
 test('release preflight rejects duplicate tags, invalid lockfiles and unsafe options without writes', async t => {

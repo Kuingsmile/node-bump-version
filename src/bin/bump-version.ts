@@ -6,10 +6,12 @@ import * as semver from 'semver'
 
 import { parseCliArgs } from '../cli-options.js'
 import { executeRelease, planRelease, type ReleasePlan } from '../mainLifeCycle.js'
+import { recommendVersion, type VersionRecommendation } from '../recommend-version.js'
 import type { BumpVersionArgs, PackageJson, ReleaseChoice, ReleaseType } from '../types/index.js'
 import { helperMsg } from '../utils.js'
 
 let argv: BumpVersionArgs = { _: [] }
+let recommendation: VersionRecommendation | undefined
 const releaseTypes: ReleaseType[] = ['major', 'minor', 'patch', 'premajor', 'preminor', 'prepatch', 'prerelease']
 
 function summary(plan: ReleasePlan) {
@@ -22,11 +24,13 @@ function summary(plan: ReleasePlan) {
     push: plan.push,
     files: plan.changes.map(change => relative(plan.path, change.path)),
     commit: !argv.skipCommit,
+    recommendation,
   }
 }
 
 function showPreview(plan: ReleasePlan): void {
   if (argv.json) return
+  if (recommendation) console.log(`Recommended ${recommendation.type}: ${recommendation.reason}`)
   const details = summary(plan)
   console.log(`Release plan: ${details.currentVersion} -> ${details.newVersion}`)
   console.log(`Package: ${details.path}\nBranch: ${details.branch}\nFiles: ${details.files.join(', ')}`)
@@ -57,7 +61,8 @@ async function main(): Promise<void> {
   if (!pkg || typeof pkg !== 'object' || Array.isArray(pkg)) throw new Error('package.json must contain an object!')
   if (typeof pkg.version !== 'string' || !semver.valid(pkg.version)) throw new Error('Invalid version in package.json!')
   const currentVersion = pkg.version
-  const releaseType = (argv.type || 'patch') as ReleaseType
+  if (argv.type === 'auto') recommendation = await recommendVersion(argv)
+  const releaseType = (recommendation?.type || argv.type || 'patch') as ReleaseType
   if (!releaseTypes.includes(releaseType)) throw new Error('Invalid release type!')
   const preid = argv.preid || (argv['preid-alpha'] ? 'alpha' : argv['preid-beta'] ? 'beta' : '')
   if (preid && !semver.valid(`0.0.0-${preid}.0`)) throw new Error('Invalid prerelease identifier')

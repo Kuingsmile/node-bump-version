@@ -19,10 +19,26 @@ const external = [
   'ora',
   'semver',
   'conventional-changelog',
+  'conventional-commits-parser',
   '@commitlint/cli',
 ]
 
 export default [
+  ...[
+    'commitlint-standard/index',
+    'conventional-changelog-standard/index',
+    'conventional-changelog-standard/parser-opts',
+  ].map(name => ({
+    input: `src/${name}.ts`,
+    output: { file: `dist/${name}.js`, format: 'es', sourcemap: true },
+    external,
+    plugins: [
+      nodeResolve({ preferBuiltins: true }),
+      commonjs(),
+      json(),
+      typescript({ tsconfig: './tsconfig.json', declaration: false }),
+    ],
+  })),
   // Main library build
   {
     input: 'src/index.ts',

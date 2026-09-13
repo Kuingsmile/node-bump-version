@@ -17,6 +17,7 @@ export interface BumpVersionArgs {
   version?: boolean
   interactive?: boolean
   preid?: string
+  preset?: 'emoji' | 'conventional'
   'preid-alpha'?: boolean
   'preid-beta'?: boolean
   changelog?: boolean

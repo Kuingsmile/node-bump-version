@@ -40,8 +40,9 @@ Options
   --json                        Emit one JSON result (use --yes for a real release)
   --interactive                 Explicitly enable prompts when input is piped
   --preid ID                    Prerelease identifier, such as rc
+  --preset NAME                 Commit convention: emoji (default) or conventional
 
-  -t, --type                    Release type. [major, minor, patch, premajor, preminor, prepatch, prerelease]
+  -t, --type                    Release type. [auto, major, minor, patch, premajor, preminor, prepatch, prerelease]
                                 Default: patch
 
   --push                        Push the current release to its upstream (or origin/current branch)

@@ -9,7 +9,8 @@ const commit = async (argv: BumpVersionArgs, newVersion: string): Promise<string
     changedFiles.push(argv.file || 'CHANGELOG.md')
   }
 
-  const releaseMsg = `:tada: Release: v${newVersion}`
+  const releaseMsg =
+    argv.preset === 'conventional' ? `chore(release): v${newVersion}` : `:tada: Release: v${newVersion}`
 
   if ((argv as any).skipCommit) return Promise.resolve()
 

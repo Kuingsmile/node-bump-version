@@ -3,6 +3,7 @@ import * as path from 'node:path'
 import { ConventionalChangelog } from 'conventional-changelog'
 
 import conventionalChangelogNode from './conventional-changelog-node/index'
+import conventionalChangelogStandard from './conventional-changelog-standard/index'
 import { applyFileChanges, type FileChange, readOptionalFile } from './file-changes'
 import { BumpVersionArgs } from './types/index'
 
@@ -13,12 +14,12 @@ export const prepareChangelog = async (argv: BumpVersionArgs, newVersion: string
 
   const changelogFile = path.resolve(argv.path || './', argv.file || 'CHANGELOG.md')
   const oldContent = readOptionalFile(changelogFile)
-  const config = await conventionalChangelogNode
+  const config = await (argv.preset === 'conventional' ? conventionalChangelogStandard : conventionalChangelogNode)
   const cc = new ConventionalChangelog(argv.path || './')
     .readPackage(path.resolve(argv.path || './', 'package.json'))
     .config({
       parser: config.parserOpts,
-      writer: config.writerOpts,
+      writer: config.writer,
     })
     .context({ version: newVersion })
   let content = ''

@@ -23,6 +23,7 @@ export const parseCliArgs = (args: string[]): BumpVersionArgs => {
       version: { type: 'boolean', short: 'v' },
       interactive: { type: 'boolean' },
       preid: { type: 'string' },
+      preset: { type: 'string' },
       push: { type: 'boolean' },
       remote: { type: 'string' },
       branch: { type: 'string' },
@@ -33,7 +34,10 @@ export const parseCliArgs = (args: string[]): BumpVersionArgs => {
       'skip-commit': { type: 'boolean' },
     },
   })
-  const result: BumpVersionArgs = { _: [], ...values }
+  const { preset, ...otherValues } = values
+  if (preset !== undefined && preset !== 'emoji' && preset !== 'conventional')
+    throw new Error('--preset must be emoji or conventional')
+  const result: BumpVersionArgs = { _: [], ...otherValues, preset }
   // Aliases share one value, including when a later --no-* reverses it.
   for (const token of tokens) {
     if (token.kind !== 'option') continue
