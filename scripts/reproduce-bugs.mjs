@@ -373,6 +373,7 @@ const cases = [
     title: 'Feature commits receive a patch recommendation',
     correct: 'The custom Feature commit recommends minor (level 1).',
     buggy: { parsedType: ':sparkles: Feature', level: 2, reason: 'There are 0 BREAKING CHANGES and 0 features' },
+    fixed: { parsedType: ':sparkles: Feature', level: 1, reason: 'There are 0 BREAKING CHANGES and 1 feature' },
     async run() {
       const { CommitParser } = await import('conventional-commits-parser')
       const { default: parser } = await import('../dist/conventional-changelog-node/parser-opts.js')
@@ -380,6 +381,12 @@ const cases = [
         await import('../dist/conventional-changelog-node/conventional-recommended-bump.js')
       const commit = new CommitParser(parser).parse(':sparkles: Feature(core): add feature')
       assert.equal(commit.type, ':sparkles: Feature', 'Parser must recognize the custom convention')
+      const fix = new CommitParser(parser).parse(':bug: Fix(core): handle input')
+      const breaking = new CommitParser(parser).parse(
+        ':sparkles: Feature(core): change api\n\nBREAKING CHANGE: replace api',
+      )
+      assert.equal(recommended.whatBump([fix]).level, 2)
+      assert.equal(recommended.whatBump([commit, breaking]).level, 0)
       return { parsedType: commit.type, ...recommended.whatBump([commit]) }
     },
   },

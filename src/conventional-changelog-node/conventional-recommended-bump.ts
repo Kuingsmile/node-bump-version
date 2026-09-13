@@ -20,7 +20,7 @@ const recommendedBumpOpts: RecommendedBumpOpts = {
       if (commit.notes.length > 0) {
         breakings += commit.notes.length
         level = 0
-      } else if (commit.type === 'feat') {
+      } else if (commit.type === ':sparkles: Feature') {
         features += 1
         if (level === 2) {
           level = 1
@@ -32,8 +32,8 @@ const recommendedBumpOpts: RecommendedBumpOpts = {
       level,
       reason:
         breakings === 1
-          ? `There is ${breakings} BREAKING CHANGE and ${features} features`
-          : `There are ${breakings} BREAKING CHANGES and ${features} features`,
+          ? `There is ${breakings} BREAKING CHANGE and ${features} feature${features === 1 ? '' : 's'}`
+          : `There are ${breakings} BREAKING CHANGES and ${features} feature${features === 1 ? '' : 's'}`,
     }
   },
 }
