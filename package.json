@@ -1,6 +1,6 @@
 {
   "name": "node-bump-version",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Preview and automate Node.js version bumps, changelogs, release commits, and Git tags.",
   "keywords": [
     "release",
