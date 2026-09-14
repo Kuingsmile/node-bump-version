@@ -9,6 +9,7 @@ Commits，可在交互式终端或 CI 中使用。
 才会推送到远程仓库。发布到 npm 需要单独执行。
 
 - [安装并完成第一次发布](#安装并完成第一次发布)
+- [从 v2.0 迁移到 v3.0](#从-v20-迁移到-v30)
 - [选择可选的提交工具](#选择可选的提交工具)
 - [配置项目](#配置项目)
 - [发布命令](#发布命令)
@@ -97,6 +98,92 @@ npm run release
 也可以运行 `yarn release`。在交互式终端中，工具会请你确认下一个版本号。发布结果保留在本地仓库中；添加 `--push`
 才会推送到远程。
 
+## 从 v2.0 迁移到 v3.0
+
+包名和 `bump-version` 命令保持不变。已有的 `"release": "bump-version"`
+脚本、emoji 提交规范和默认的补丁版本升级仍然适用。自动版本推荐和 Conventional
+Commits 均需主动启用；升级不需要重写提交历史。
+
+### 1. 更新 Node.js 和依赖包
+
+将本地开发环境和 CI 更新到 Node.js **22.x 中的 22.13.0 及以上版本，或 24 及以上版本**
+（`^22.13.0 || >=24.0.0`）。不支持 Node 23。v3 发布后，升级开发依赖：
+
+```bash
+npm install -D node-bump-version@^3.0.0
+# 或使用 Yarn：
+yarn add -D node-bump-version@^3.0.0
+```
+
+### 2. 保留需要的提交工具
+
+在 v2 中，`husky`、`@commitlint/cli`、`commitizen` 和 `cz-customizable` 会作为 `node-bump-version`
+的运行时依赖安装。在 v3 中，它们改为**可选的 peer dependencies**。使用钩子或 `npm run cz`
+的项目必须直接声明相应工具的依赖。如果只使用发布 CLI，可以跳过这一步。
+
+如果同时需要提交信息检查和交互式提交助手，请在 Git 仓库根目录执行：
+
+```bash
+npx bump-version init --hooks --commit-helper --dry-run
+npx bump-version init --hooks --commit-helper
+npm install
+npm run prepare
+```
+
+如果只需要其中一项集成，仅使用 `--hooks` 或 `--commit-helper`；使用钩子时需要运行 `npm run prepare`。 `init`
+会补充缺失的依赖和配置，但保留已有的脚本、依赖版本、配置文件和钩子文件。如果项目已经声明了较旧的工具版本，请将实际使用的工具更新到支持的版本范围：`husky@^9.1.7`、`@commitlint/cli@^21.2.2`、
+`commitizen@^4.3.2` 和 `cz-customizable@^7.5.4`。
+
+### 3. 迁移旧钩子并检查预设路径
+
+如果曾按照 v2 README 在 `package.json` 顶层添加 `"husky": { "hooks": ... }` 配置，请将其中的命令迁入 `.husky/`
+下的钩子文件，然后删除旧的 `husky` 字段。原来的 `commitlint -E HUSKY_GIT_PARAMS` 命令应替换为 `.husky/commit-msg`
+中的以下内容：
+
+```sh
+npx --no -- commitlint --edit "$1"
+```
+
+`prepare` 脚本必须运行 `husky`；`init --hooks` 会添加该命令。其他旧钩子（例如 pre-commit 中的 lint 命令）需要手动迁移。
+`init` 会保留已有的 `.husky/commit-msg`，因此必要时请自行更新该文件，再运行 `npm run prepare` 激活钩子。
+
+v2 文档中的 `dist/*` 和 `.cz-config.cjs` 导入路径仍然可用。新配置建议使用
+[commitlint 和 Husky 配置](#commitlint-和-husky-配置)以及[提交助手配置](#提交助手配置)中的公共预设路径：
+`node-bump-version/commitlint` 和 `node-bump-version/commitizen`。请修改已有的 commitlint 配置，不要再添加第二份配置。
+
+对于已有的 v2 提交信息，保留默认的 `emoji` 预设即可。如果决定切换到标准 Conventional
+Commits，请按照[选择提交规范](#选择提交规范)操作，并保持发布、commitlint 和提交助手的预设一致。
+
+### 4. 检查发布脚本和 CI
+
+- **干净的工作区：**
+  正式发布现在要求 Git 已跟踪的文件以及发布涉及的文件没有未提交的改动，当前检出了一个分支，且仓库至少有一次提交。发布前请提交迁移改动，包括包清单和锁文件。
+- **无人值守发布：** 在 CI 中使用
+  `--yes`，不要再通过管道输入提示问题的答案。预览默认不会弹出交互提示。自动化流程需要结构化输出时可使用
+  `--json`；失败时退出码为 1。
+- **严格的参数检查：** 删除未知选项和位置参数。布尔开关不接受值；将 `--push false` 改为 `--no-push`。原有的 `--dry`/`-d`
+  和 alpha/beta 快捷选项仍然支持。
+- **推送目标：** v2 会推送到 `origin master`。v3 的 `--push` 使用已配置的上游；没有上游时使用 `origin`
+  和当前分支。如需明确保留原目标，使用
+  `--push --remote origin --branch master`。推送仅包含发布分支和本次发布的标签，默认采用原子推送。仅在服务器不支持原子推送时使用
+  `--no-atomic`。
+- **跳过提交：** 如果脚本使用了 `--skipCommit`，建议改用 `--skip-commit`。现在必须同时使用 `--no-tag`，且不能与 `--push`
+  一起使用。
+
+### 5. 首次使用 v3 发布前进行验证
+
+```bash
+npx bump-version doctor
+npx bump-version --dry-run
+```
+
+检查预览中的版本号、更新日志、文件、提交和标签。这些命令不会执行发布。如需通过 npm 脚本预览，使用
+`npm run release -- --dry-run`（PowerShell 中使用 `npm.cmd run release -- --dry-run`）。使用 Yarn 时，运行
+`yarn bump-version doctor` 和 `yarn release --dry-run`。
+
+提交迁移改动后，即可使用原来的发布命令；无人值守发布需添加
+`--yes`。发布到 npm 仍需单独执行。如果创建发布提交后发生错误，请参阅[发布检查与失败恢复](#发布检查与失败恢复)。
+
 ## 选择可选的提交工具
 
 这些工具用于**编写或检查提交信息**。只要手动编写的提交信息符合所选规范，版本升级、自动版本推荐、更新日志和标签功能都可以独立使用。
@@ -127,8 +214,8 @@ npx bump-version doctor
 `.husky/commit-msg` 钩子，并将 Husky 加入 `prepare` 脚本。**它本身不会安装依赖或启用钩子。** `npm install`
 用于安装依赖，`npm run prepare` 用于启用 Husky。安装过程可能已经执行了 `prepare`，也可以显式运行一次以确保钩子已启用。
 
-配置完成后，照常使用 `git commit`
-即可。钩子会拒绝不符合 commitlint 规则的提交信息。每位协作者都需要在自己的本地仓库中安装开发依赖并启用钩子。
+配置完成后，照常使用
+`git commit`即可。钩子会拒绝不符合 commitlint 规则的提交信息。每位协作者都需要在自己的本地仓库中安装开发依赖并启用钩子。
 
 ### 添加交互式提交助手
 

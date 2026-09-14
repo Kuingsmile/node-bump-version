@@ -9,6 +9,7 @@ A release updates the package version and changelog, commits those changes, and 
 `v1.2.0`. It pushes only when you pass `--push`. Publishing to npm is a separate step.
 
 - [Install and make your first release](#install-and-make-your-first-release)
+- [Migrate from v2.0 to v3.0](#migrate-from-v20-to-v30)
 - [Choose optional commit tools](#choose-optional-commit-tools)
 - [Configure your project](#configure-your-project)
 - [Release commands](#release-commands)
@@ -98,6 +99,95 @@ npm run release
 
 Or run `yarn release`. In an interactive terminal, the tool asks you to confirm the next version. The release stays in
 your local repository unless you add `--push`.
+
+## Migrate from v2.0 to v3.0
+
+The package name and `bump-version` command stay the same. Your existing `"release": "bump-version"` script, emoji
+commit convention, and default patch bump still work. Automatic version recommendations and Conventional Commits are
+opt-in; upgrading does not require rewriting commit history.
+
+### 1. Update Node.js and the package
+
+Update local development and CI to Node.js **22.13.0+ on the 22.x line, or 24+** (`^22.13.0 || >=24.0.0`). Node 23 is
+not supported. Once v3 is published, upgrade the development dependency:
+
+```bash
+npm install -D node-bump-version@^3.0.0
+# Or, with Yarn:
+yarn add -D node-bump-version@^3.0.0
+```
+
+### 2. Keep the commit tools you use
+
+In v2, `husky`, `@commitlint/cli`, `commitizen`, and `cz-customizable` were installed as runtime dependencies of
+`node-bump-version`. In v3, they are **optional peer dependencies**. Projects using hooks or `npm run cz` must declare
+the relevant tools directly. Projects using only the release CLI can skip this step.
+
+For both commit-message checks and the interactive helper, run these commands at the Git repository root:
+
+```bash
+npx bump-version init --hooks --commit-helper --dry-run
+npx bump-version init --hooks --commit-helper
+npm install
+npm run prepare
+```
+
+Use only `--hooks` or `--commit-helper` if you need just one integration; `npm run prepare` is needed for hooks.
+`init` adds missing dependencies and configuration, but preserves existing scripts, dependency versions, configs, and
+hook files. If you already declare older tool versions, update the tools you use to the supported ranges:
+`husky@^9.1.7`, `@commitlint/cli@^21.2.2`, `commitizen@^4.3.2`, and `cz-customizable@^7.5.4`.
+
+### 3. Migrate legacy hooks and review preset paths
+
+If you copied the v2 README's top-level `"husky": { "hooks": ... }` configuration in `package.json`, move those commands
+into `.husky/` hook files and remove the old `husky` field. The old `commitlint -E HUSKY_GIT_PARAMS` command becomes this
+line in `.husky/commit-msg`:
+
+```sh
+npx --no -- commitlint --edit "$1"
+```
+
+The `prepare` script must run `husky`; `init --hooks` adds it. Move any other old hooks, such as a pre-commit lint
+command, manually. Existing `.husky/commit-msg` files are preserved by `init`, so update that file yourself if needed,
+then run `npm run prepare` to activate the hooks.
+
+The documented v2 `dist/*` and `.cz-config.cjs` import paths remain available. For new configuration, prefer the
+public preset paths shown in [Commitlint and Husky configuration](#commitlint-and-husky-configuration) and
+[Commit-helper configuration](#commit-helper-configuration): `node-bump-version/commitlint` and
+`node-bump-version/commitizen`. Edit your existing commitlint configuration instead of adding a second one.
+
+Keep the default `emoji` preset for existing v2 messages. If you choose to switch to standard Conventional Commits,
+follow [Choose a commit convention](#choose-a-commit-convention) and align the release, commitlint, and helper presets.
+
+### 4. Review release scripts and CI
+
+- **Clean working tree:** real releases now require clean tracked files and clean release files, a branch checkout,
+  and at least one commit. Commit the migration changes, including manifests and lockfiles, before releasing.
+- **Unattended releases:** use `--yes` in CI instead of piping answers to the prompt. Dry runs do not prompt by
+  default. Use `--json` if automation needs structured output; failures exit with status 1.
+- **Strict arguments:** remove unknown options and positional arguments. Boolean flags take no value; replace
+  `--push false` with `--no-push`. Existing `--dry`/`-d` and alpha/beta shortcuts remain supported.
+- **Push destination:** v2 pushed to `origin master`. In v3, `--push` uses the configured upstream, falling back to
+  `origin` and the current branch. To keep an explicit destination, use `--push --remote origin --branch master`.
+  Only the release tag is pushed with the branch, and pushes are atomic by default. Use `--no-atomic` only if your
+  server does not support atomic pushes.
+- **Skipping the commit:** if your script used `--skipCommit`, prefer `--skip-commit`. It now requires `--no-tag` and
+  cannot be combined with `--push`.
+
+### 5. Verify before your first v3 release
+
+```bash
+npx bump-version doctor
+npx bump-version --dry-run
+```
+
+Review the proposed version, changelog, files, commit, and tag. These commands do not make a release. To preview through
+your npm script, use `npm run release -- --dry-run` (`npm.cmd run release -- --dry-run` in PowerShell). With Yarn, use
+`yarn bump-version doctor` and `yarn release --dry-run`.
+
+After committing the migration changes, use your usual release command; add `--yes` for an unattended release.
+Publishing to npm remains a separate step. See [Release safety and recovery](#release-safety-and-recovery) for handling
+a failure after the release commit has been created.
 
 ## Choose optional commit tools
 
