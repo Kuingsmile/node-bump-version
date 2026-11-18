@@ -1,5 +1,5 @@
-import writerOpts from '../conventional-changelog-node/writer-opts'
-import parserOpts from './parser-opts'
+import writerOpts from '../conventional-changelog-node/writer-opts.js'
+import parserOpts from './parser-opts.js'
 
 const types: Record<string, string> = {
   feat: ':sparkles: Feature',

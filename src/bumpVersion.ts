@@ -2,8 +2,8 @@ import { resolve } from 'node:path'
 
 import * as semver from 'semver'
 
-import { applyFileChanges, type FileChange, readOptionalFile } from './file-changes'
-import type { BumpVersionArgs, PackageJson } from './types/index'
+import { applyFileChanges, type FileChange, readOptionalFile } from './file-changes.js'
+import type { BumpVersionArgs, PackageJson } from './types/index.js'
 
 export function prepareVersionFiles(argv: BumpVersionArgs, version: string): FileChange[] {
   const normalizedVersion = semver.valid(version)

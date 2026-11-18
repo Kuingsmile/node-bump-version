@@ -34,7 +34,7 @@ for (const directory of [dirname(process.execPath), ...(process.env.PATH || proc
 const npm = candidates.find(candidate => candidate && /[/\\]npm-cli\.js$/.test(candidate) && existsSync(candidate))
 assert.ok(npm, 'npm-cli.js must be available')
 try {
-  // npm 10 still runs prepare with --ignore-scripts; keep its output out of the JSON.
+  // Keep lifecycle output out of npm's JSON response.
   const [pack] = JSON.parse(
     run(
       process.execPath,
@@ -42,14 +42,12 @@ try {
       project,
     ),
   )
-  assert.ok(pack.files.every(file => !/^(src\/|scripts\/|test\/|eslint|rollup)/.test(file.path)))
-  for (const file of [
-    'dist/index.d.ts',
-    'dist/bin/bump-version.js',
-    'dist/commitlint-standard/index.d.ts',
-    '.cz-config.cjs',
-    '.cz-config-conventional.cjs',
-  ]) {
+  assert.ok(pack.files.every(file => !/^(src\/|scripts\/|test\/|eslint|rolldown|pnpm-)/.test(file.path)))
+  const exportTargets = Object.values(sourcePackage.exports).flatMap(entry =>
+    typeof entry === 'string' ? [entry] : Object.values(entry),
+  )
+  for (const target of [...exportTargets, ...Object.values(sourcePackage.bin)].filter(path => !path.includes('*'))) {
+    const file = target.replace(/^\.\//, '')
     assert.ok(
       pack.files.some(entry => entry.path === file),
       `Missing packed file: ${file}`,
@@ -77,6 +75,7 @@ try {
     run(process.execPath, [
       npm,
       'install',
+      '--engine-strict',
       '--ignore-scripts',
       '--omit=optional',
       '--no-audit',
@@ -87,7 +86,7 @@ try {
   } catch {
     throw new Error('Packed installation failed; check registry access and dependency compatibility')
   }
-  for (const optional of ['husky', 'commitizen', 'cz-customizable', '@commitlint/cli']) {
+  for (const optional of Object.keys(sourcePackage.peerDependenciesMeta)) {
     assert.equal(existsSync(join(consumer, 'node_modules', optional)), false, `${optional} should be optional`)
   }
   run(process.execPath, [
@@ -96,6 +95,7 @@ try {
     "await import('node-bump-version'); await import('node-bump-version/commitlint'); await import('node-bump-version/commitlint/conventional'); await import('node-bump-version/changelog'); await import('node-bump-version/changelog/conventional'); await import('node-bump-version/dist/index.js');",
   ])
   const cli = join(consumer, 'node_modules/node-bump-version/dist/bin/bump-version.js')
+  assert.match(readFileSync(cli, 'utf8'), /^#!\/usr\/bin\/env node\r?\n/)
   writeFileSync(
     join(consumer, 'check.mts'),
     `import { planRelease, type BumpVersionArgs } from 'node-bump-version'\nimport emoji from 'node-bump-version/changelog'\nimport standard from 'node-bump-version/changelog/conventional'\nimport type { Preset } from 'conventional-changelog'\nconst options: BumpVersionArgs = { _: [], dry: true }\nconst custom: Preset = await emoji\nconst conventional: Preset = await standard\nvoid [options, custom, conventional, planRelease]\n`,

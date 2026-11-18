@@ -1,11 +1,11 @@
 import { CommitParser } from 'conventional-commits-parser'
 import * as semver from 'semver'
 
-import recommended from './conventional-changelog-node/conventional-recommended-bump'
-import customParser from './conventional-changelog-node/parser-opts'
-import standardParser from './conventional-changelog-standard/parser-opts'
-import exec from './exec'
-import type { BumpVersionArgs, ReleaseType } from './types/index'
+import recommended from './conventional-changelog-node/conventional-recommended-bump.js'
+import customParser from './conventional-changelog-node/parser-opts.js'
+import standardParser from './conventional-changelog-standard/parser-opts.js'
+import exec from './exec.js'
+import type { BumpVersionArgs, ReleaseType } from './types/index.js'
 
 export interface VersionRecommendation {
   type: ReleaseType

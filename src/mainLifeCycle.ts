@@ -3,15 +3,15 @@ import { basename, dirname, isAbsolute, relative, resolve, sep } from 'node:path
 
 import * as semver from 'semver'
 
-import { prepareVersionFiles } from './bumpVersion'
-import { prepareChangelog } from './changelog'
-import commit from './commit'
-import exec from './exec'
-import { applyFileChanges, type FileChange, restoreFileChanges } from './file-changes'
-import spinner from './ora'
-import { type PushTarget, resolvePushTarget } from './push-target'
-import tag from './tag'
-import type { BumpVersionArgs } from './types/index'
+import { prepareVersionFiles } from './bumpVersion.js'
+import { prepareChangelog } from './changelog.js'
+import commit from './commit.js'
+import exec from './exec.js'
+import { applyFileChanges, type FileChange, restoreFileChanges } from './file-changes.js'
+import spinner from './ora.js'
+import { type PushTarget, resolvePushTarget } from './push-target.js'
+import tag from './tag.js'
+import type { BumpVersionArgs } from './types/index.js'
 
 export interface ReleasePlan {
   options: BumpVersionArgs

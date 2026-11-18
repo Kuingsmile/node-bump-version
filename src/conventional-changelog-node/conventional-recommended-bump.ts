@@ -1,6 +1,6 @@
 import type { Commit } from 'conventional-commits-parser'
 
-import parserOpts from './parser-opts'
+import parserOpts from './parser-opts.js'
 
 export interface RecommendedBumpOpts {
   parserOpts: typeof parserOpts

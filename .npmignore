@@ -2,7 +2,8 @@ node_modules/
 test/
 scripts/
 .husky/
-yarn-error.log
+pnpm-debug.log*
+pnpm-lock.yaml
 package-lock.json
 tsconfig.json
 tslint.json

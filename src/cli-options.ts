@@ -1,6 +1,6 @@
 import { parseArgs } from 'node:util'
 
-import type { BumpVersionArgs } from './types/index'
+import type { BumpVersionArgs } from './types/index.js'
 
 export const parseCliArgs = (args: string[]): BumpVersionArgs => {
   const { values, tokens, positionals } = parseArgs({

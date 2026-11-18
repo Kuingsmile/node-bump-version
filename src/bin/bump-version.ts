@@ -1,14 +1,17 @@
+#!/usr/bin/env node
 import { readFileSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
 
-import inquirer from 'inquirer'
+import confirm from '@inquirer/confirm'
+import input from '@inquirer/input'
+import select, { Separator } from '@inquirer/select'
 import * as semver from 'semver'
 
 import { parseCliArgs } from '../cli-options.js'
 import { executeRelease, planRelease, type ReleasePlan } from '../mainLifeCycle.js'
 import { recommendVersion, type VersionRecommendation } from '../recommend-version.js'
 import { doctorProject, initProject } from '../setup.js'
-import type { BumpVersionArgs, PackageJson, ReleaseChoice, ReleaseType } from '../types/index.js'
+import type { BumpVersionArgs, PackageJson, ReleaseType } from '../types/index.js'
 import { helperMsg } from '../utils.js'
 
 let argv: BumpVersionArgs = { _: [] }
@@ -100,38 +103,25 @@ async function main(): Promise<void> {
   let plan = await planRelease(argv, currentVersion, nextVersion)
   showPreview(plan)
   if (!automatic) {
-    const answer = await inquirer.prompt<{ confirmVersion: boolean }>([
-      {
-        type: 'confirm',
-        name: 'confirmVersion',
-        message: `The next version is ${nextVersion}, is it right?`,
-        default: false,
-      },
-    ])
-    if (!answer.confirmVersion) {
-      const choices: ReleaseChoice[] = releaseTypes.map(type => ({
-        name: `${type} - ${semver.inc(currentVersion, type, preid || 'alpha')}`,
-        value: semver.inc(currentVersion, type, preid || 'alpha')!,
-      }))
-      const selected = await inquirer.prompt<{ version: string }>([
-        {
-          type: 'select',
-          name: 'version',
-          message: `The current version is ${currentVersion}\n Which version would you like to bump it?`,
-          choices: [...choices, new inquirer.Separator(), 'custom version', 'never mind~'],
-          pageSize: 10,
-        },
-      ])
-      if (selected.version === 'never mind~') {
+    const confirmed = await confirm({ message: `The next version is ${nextVersion}, is it right?`, default: false })
+    if (!confirmed) {
+      const choices = releaseTypes.map(type => {
+        const value = semver.inc(currentVersion, type, preid || 'alpha')!
+        return { name: `${type} - ${value}`, value }
+      })
+      const selected = await select({
+        message: `The current version is ${currentVersion}\n Which version would you like to bump it?`,
+        choices: [...choices, new Separator(), { value: 'custom version' }, { value: 'never mind~' }],
+        pageSize: 10,
+      })
+      if (selected === 'never mind~') {
         console.log('Release cancelled.')
         return
       }
-      if (selected.version === 'custom version') {
-        const custom = await inquirer.prompt<{ version: string }>([
-          { type: 'input', name: 'version', message: 'Write down your custom version:' },
-        ])
-        nextVersion = semver.valid(custom.version)
-      } else nextVersion = selected.version
+      if (selected === 'custom version') {
+        const custom = await input({ message: 'Write down your custom version:' })
+        nextVersion = semver.valid(custom)
+      } else nextVersion = selected
       if (!nextVersion || !semver.gt(nextVersion, currentVersion)) throw new Error('Invalid version!')
       plan = await planRelease(argv, currentVersion, nextVersion)
       showPreview(plan)

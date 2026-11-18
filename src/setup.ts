@@ -5,9 +5,15 @@ import { join, resolve } from 'node:path'
 
 import * as semver from 'semver'
 
-import toolPackage from '../package.json'
-import { applyFileChanges, type FileChange, readOptionalFile } from './file-changes'
-import type { BumpVersionArgs, PackageJson } from './types/index'
+import toolPackage from '../package.json' with { type: 'json' }
+import { applyFileChanges, type FileChange, readOptionalFile } from './file-changes.js'
+import type { BumpVersionArgs, PackageJson } from './types/index.js'
+
+const initDependencyVersions = {
+  ...toolPackage.peerDependencies,
+  commitizen: '^4.3.2',
+  'cz-customizable': '^7.5.4',
+}
 
 function readPackage(path: string): { before: string; pkg: PackageJson } {
   const before = readOptionalFile(join(path, 'package.json'))
@@ -36,10 +42,9 @@ export function initProject(argv: BumpVersionArgs): { files: string[]; dryRun: b
   pkg.bumpVersion.preset ??= preset
   const extras: FileChange[] = []
   const nextSteps: string[] = []
-  const dev = (name: string) => {
+  const dev = (name: keyof typeof initDependencyVersions) => {
     pkg.devDependencies ??= {}
-    const versions: Record<string, string> = { ...toolPackage.dependencies, ...toolPackage.devDependencies }
-    if (!pkg.dependencies?.[name]) pkg.devDependencies[name] ??= versions[name]
+    if (!pkg.dependencies?.[name]) pkg.devDependencies[name] ??= initDependencyVersions[name]
   }
   if (argv.hooks) {
     const root = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: path, encoding: 'utf8' })
@@ -76,19 +81,25 @@ export function initProject(argv: BumpVersionArgs): { files: string[]; dryRun: b
     if (!prepare || !/(^|[\s;&])husky(?:\s|$)/.test(prepare))
       pkg.scripts.prepare = prepare ? `${prepare} && husky` : 'husky'
     const hook = join(path, '.husky/commit-msg')
-    if (readOptionalFile(hook) === null)
-      extras.push({ path: hook, before: null, after: 'npx --no -- commitlint --edit "$1"\n' })
+    if (readOptionalFile(hook) === null) extras.push({ path: hook, before: null, after: 'commitlint --edit "$1"\n' })
     nextSteps.push("Install dependencies, then run your package manager's prepare script to activate Husky.")
   }
   if (argv['commit-helper']) {
-    dev('commitizen')
-    dev('cz-customizable')
-    pkg.scripts.cz ??= 'git-cz'
-    pkg.config ??= {}
-    pkg.config.commitizen ??= { path: 'cz-customizable' }
-    pkg.config['cz-customizable'] ??= { config: '.cz-config.cjs' }
+    const legacyHelper = pkg.config?.commitizen || pkg.config?.['cz-customizable'] || pkg.scripts.cz === 'git-cz'
+    if (legacyHelper) {
+      dev('commitizen')
+      dev('cz-customizable')
+      pkg.scripts.cz ??= 'git-cz'
+      pkg.config ??= {}
+      pkg.config.commitizen ??= { path: 'cz-customizable' }
+      pkg.config['cz-customizable'] ??= { config: '.cz-config.cjs' }
+    } else {
+      dev('czg')
+      pkg.scripts.cz ??= 'czg --config=.cz-config.cjs'
+    }
     const config = join(path, '.cz-config.cjs')
-    if (pkg.config['cz-customizable'].config === '.cz-config.cjs' && readOptionalFile(config) === null)
+    const useDefaultConfig = !legacyHelper || pkg.config?.['cz-customizable']?.config === '.cz-config.cjs'
+    if (useDefaultConfig && readOptionalFile(config) === null)
       extras.push({
         path: config,
         before: null,
@@ -136,6 +147,7 @@ export function doctorProject(argv: BumpVersionArgs) {
   const require = createRequire(join(path, 'package.json'))
   for (const dependency of [
     ...(pkg.scripts?.prepare?.includes('husky') ? ['husky', '@commitlint/cli'] : []),
+    ...(pkg.scripts?.cz?.split(/\s+/)[0] === 'czg' ? ['czg'] : []),
     ...(pkg.config?.commitizen ? ['commitizen', 'cz-customizable'] : []),
   ]) {
     let installed = true

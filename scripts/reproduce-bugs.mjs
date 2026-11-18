@@ -118,7 +118,7 @@ function succeeded(result) {
 }
 
 function findNpm() {
-  // npm_execpath is npm-cli.js under npm, but yarn.js under Yarn.
+  // pnpm and npm both set npm_execpath. This regression exercises npm's argument forwarding.
   const candidates = [process.env.npm_execpath]
   for (const directory of [
     dirname(process.execPath),
@@ -590,13 +590,13 @@ async function main() {
   assert.ok(ids.length && ids.every(id => cases.some(item => item.id === id)), '--case must be a number from 1 to 11')
   if (!values['skip-build']) {
     console.log('Building current source...')
-    execFileSync(process.execPath, [join(project, 'node_modules/rollup/dist/bin/rollup'), '-c', '--forceExit'], {
+    execFileSync(process.execPath, ['--run', 'build'], {
       cwd: project,
       stdio: 'pipe',
       timeout: 120000,
     })
   }
-  assert.ok(existsSync(cli), 'Built CLI not found; run yarn build')
+  assert.ok(existsSync(cli), 'Built CLI not found; run pnpm build')
   const parent = realpathSync(values['temp-dir'] ? resolve(values['temp-dir']) : tmpdir())
   assert.ok(
     !/[\s&;|<>^%!"'`$()]/.test(parent),

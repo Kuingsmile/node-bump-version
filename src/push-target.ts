@@ -1,5 +1,5 @@
-import exec from './exec'
-import type { BumpVersionArgs } from './types/index'
+import exec from './exec.js'
+import type { BumpVersionArgs } from './types/index.js'
 
 export interface PushTarget {
   remote: string

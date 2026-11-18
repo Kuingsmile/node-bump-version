@@ -1,7 +1,7 @@
 # Release verification
 
 ```bash
-yarn test:regressions
+pnpm run test:regressions
 # Reuse an existing build:
 node scripts/reproduce-bugs.mjs --skip-build --verify-fixed
 ```
@@ -9,7 +9,7 @@ node scripts/reproduce-bugs.mjs --skip-build --verify-fixed
 This verifies all 11 findings from the previous audit in temporary Git repositories. `--verify-fixed` exits 0 only when
 every selected case reports `FIXED`. A reproduced bug, unexpected result, or harness error exits 1.
 
-For investigation, the legacy mode (`yarn reproduce:bugs`) expects bugs to reproduce and exits 0 only if every selected
+For investigation, the legacy mode (`pnpm run reproduce:bugs`) expects bugs to reproduce and exits 0 only if every selected
 case reproduces. Use `--verify-fixed` for correctness checks and CI.
 
 ```bash
@@ -31,13 +31,13 @@ new directory. If the system temporary path contains spaces or shell metacharact
 ## Package installation check
 
 ```bash
-yarn build
-yarn test:package
+pnpm run build
+pnpm run test:package
 ```
 
 This packs the current build, verifies the publication allowlist, and installs the tarball into an isolated consumer.
 Registry access is required. It checks public imports, confirms optional integrations are absent, and runs a preview and
 release in a temporary repository with no remotes. Its temporary directory is removed after completion.
 
-The regular `yarn test` suite needs Git but does not install packages from the registry. All commands require Node
-matching the package engine range; repository builds use Yarn 1.22.22.
+The regular `pnpm run test` suite needs Git but does not install packages from the registry. All commands require Node
+matching the package engine range; repository builds use pnpm 12.21.0.

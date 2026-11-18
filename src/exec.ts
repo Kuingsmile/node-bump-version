@@ -1,7 +1,7 @@
 import { exec, execFile } from 'node:child_process'
 
-import logger from './logger'
-import { BumpVersionArgs } from './types/index'
+import logger from './logger.js'
+import { BumpVersionArgs } from './types/index.js'
 
 const execCommand = (argv: BumpVersionArgs, cmd: string, args?: string[]): Promise<string> => {
   return new Promise((resolve, reject) => {

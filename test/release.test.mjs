@@ -12,7 +12,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { delimiter, dirname, join, resolve } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { stripVTControlCharacters } from 'node:util'
@@ -237,6 +237,10 @@ test('init preserves configuration, previews without writes and is idempotent', 
   assert.equal(result.scripts.prepare, 'node custom-setup.js && husky')
   assert.equal(result.scripts.release, 'custom-release')
   assert.deepEqual(result.config.existing, { keep: true })
+  assert.equal(result.scripts.cz, 'czg --config=.cz-config.cjs')
+  assert.ok(result.devDependencies.czg)
+  assert.equal(result.devDependencies.commitizen, undefined)
+  assert.match(readFileSync(join(cwd, '.cz-config.cjs'), 'utf8'), /commitizen\/conventional/)
   assert.equal(result.bumpVersion.preset, 'conventional')
   assert.deepEqual(initProject(options).files, [])
   assert.equal(doctorProject({ _: [], path: cwd }).ok, false)
@@ -267,6 +271,23 @@ test('doctor and stable public exports work without releasing', t => {
   )
   assert.equal(imports.status, 0, imports.stderr)
   assert.equal(git(cwd, 'status', '--porcelain'), '')
+})
+
+test('init keeps existing Commitizen projects on their configured adapter', t => {
+  const cwd = fixture(t)
+  const manifest = join(cwd, 'package.json')
+  const pkg = JSON.parse(readFileSync(manifest, 'utf8'))
+  pkg.config = { commitizen: { path: 'cz-customizable' }, 'cz-customizable': { config: 'custom.cjs' } }
+  writeFileSync(manifest, JSON.stringify(pkg))
+  const options = { _: ['init'], path: cwd, 'commit-helper': true }
+  initProject(options)
+  const result = JSON.parse(readFileSync(manifest, 'utf8'))
+  assert.deepEqual(result.config, pkg.config)
+  assert.equal(result.scripts.cz, 'git-cz')
+  assert.ok(result.devDependencies.commitizen && result.devDependencies['cz-customizable'])
+  assert.equal(result.devDependencies.czg, undefined)
+  assert.equal(existsSync(join(cwd, '.cz-config.cjs')), false)
+  assert.deepEqual(initProject(options).files, [])
 })
 
 test('init refuses malformed configuration and preserves TypeScript commitlint files', t => {
@@ -443,16 +464,17 @@ test('Husky runs pre-commit and enforces commit messages through Git', t => {
   }
   pkg.commitlint = { extends: [join(project, 'dist/commitlint-node/index.js')] }
   writeFileSync(join(cwd, 'package.json'), JSON.stringify(pkg, null, 2) + '\n')
-  symlinkSync(
-    join(project, 'node_modules'),
-    join(cwd, 'node_modules'),
-    process.platform === 'win32' ? 'junction' : 'dir',
-  )
   mkdirSync(join(cwd, '.husky'))
   for (const hook of ['pre-commit', 'commit-msg']) {
     copyFileSync(join(project, '.husky', hook), join(cwd, '.husky', hook))
   }
-  const env = { ...process.env, HUSKY: '1', XDG_CONFIG_HOME: join(cwd, '.config') }
+  // pnpm may install before running a script. Give this fixture its own modules directory.
+  const env = {
+    ...process.env,
+    PATH: [join(project, 'node_modules/.bin'), process.env.PATH].join(delimiter),
+    HUSKY: '1',
+    XDG_CONFIG_HOME: join(cwd, '.config'),
+  }
   execFileSync(process.execPath, [join(project, 'node_modules/husky/bin.js')], { cwd, env, stdio: 'pipe' })
   assert.equal(git(cwd, 'config', 'core.hooksPath'), '.husky/_')
   const runGit = (...args) => spawnSync('git', args, { cwd, env, encoding: 'utf8', timeout: 30000 })

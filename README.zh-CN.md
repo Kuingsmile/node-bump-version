@@ -19,7 +19,7 @@ Commits，可在交互式终端或 CI 中使用。
 
 ### 1. 检查环境要求
 
-- Node.js **22.x 中的 22.13.0 及以上版本，或 24 及以上版本**（`^22.13.0 || >=24.0.0`；不支持 Node 23）。
+- Node.js **24.0.0 或更高版本**。
 - 已安装 Git，并配置了提交所需的用户名和邮箱。
 - 项目包含 `package.json`，且有合法的版本号，例如 `"version": "1.0.0"`。
 - 项目已初始化为 Git 仓库，至少有一次提交，并且当前检出了一个分支。
@@ -38,11 +38,11 @@ npm install -D node-bump-version
 npx bump-version init
 ```
 
-使用 Yarn：
+使用 pnpm：
 
 ```bash
-yarn add -D node-bump-version
-yarn bump-version init
+pnpm add -D node-bump-version
+pnpm exec bump-version init
 ```
 
 默认情况下，`init` 会在 `package.json` 中补充以下缺失的字段：
@@ -59,7 +59,7 @@ yarn bump-version init
 ```
 
 如果项目使用 `feat: add a feature`、`fix: fix a bug` 这样的提交信息，请将普通的 `init` 命令替换为
-`npx bump-version init --preset conventional`（Yarn：`yarn bump-version init --preset conventional`）。示例见[选择提交规范](#选择提交规范)。
+`npx bump-version init --preset conventional`（pnpm：`pnpm exec bump-version init --preset conventional`）。示例见[选择提交规范](#选择提交规范)。
 
 `init` 会保留已有的 `release` 脚本。如果项目已经定义了该脚本，请按需将 `bump-version` 合并进去，或直接运行
 `npx bump-version`。也可以跳过 `init`，直接使用 CLI 的默认配置。
@@ -73,11 +73,11 @@ npx bump-version doctor
 npm run release -- --dry-run
 ```
 
-使用 Yarn：
+使用 pnpm：
 
 ```bash
-yarn bump-version doctor
-yarn release --dry-run
+pnpm exec bump-version doctor
+pnpm run release --dry-run
 ```
 
 `doctor` 用于检查项目配置。`--dry-run`
@@ -95,7 +95,7 @@ yarn release --dry-run
 npm run release
 ```
 
-也可以运行 `yarn release`。在交互式终端中，工具会请你确认下一个版本号。发布结果保留在本地仓库中；添加 `--push`
+也可以运行 `pnpm run release`。在交互式终端中，工具会请你确认下一个版本号。发布结果保留在本地仓库中；添加 `--push`
 才会推送到远程。
 
 ## 从 v2.0 迁移到 v3.0
@@ -106,20 +106,19 @@ Commits 均需主动启用；升级不需要重写提交历史。
 
 ### 1. 更新 Node.js 和依赖包
 
-将本地开发环境和 CI 更新到 Node.js **22.x 中的 22.13.0 及以上版本，或 24 及以上版本**
-（`^22.13.0 || >=24.0.0`）。不支持 Node 23。v3 发布后，升级开发依赖：
+将本地开发环境和 CI 更新到 Node.js **24.0.0 或更高版本**，然后升级开发依赖。
 
 ```bash
 npm install -D node-bump-version@^3.0.0
-# 或使用 Yarn：
-yarn add -D node-bump-version@^3.0.0
+# 或使用 pnpm：
+pnpm add -D node-bump-version@^3.0.0
 ```
 
 ### 2. 保留需要的提交工具
 
 在 v2 中，`husky`、`@commitlint/cli`、`commitizen` 和 `cz-customizable` 会作为 `node-bump-version`
-的运行时依赖安装。在 v3 中，它们改为**可选的 peer dependencies**。使用钩子或 `npm run cz`
-的项目必须直接声明相应工具的依赖。如果只使用发布 CLI，可以跳过这一步。
+的运行时依赖安装。在 v3 中，`husky`、`@commitlint/cli` 和 `czg` 是**可选的 peer dependencies**。使用钩子或
+`npm run cz` 的项目需要直接声明相应工具的依赖。如果只使用发布 CLI，可以跳过这一步。
 
 如果同时需要提交信息检查和交互式提交助手，请在 Git 仓库根目录执行：
 
@@ -131,8 +130,9 @@ npm run prepare
 ```
 
 如果只需要其中一项集成，仅使用 `--hooks` 或 `--commit-helper`；使用钩子时需要运行 `npm run prepare`。 `init`
-会补充缺失的依赖和配置，但保留已有的脚本、依赖版本、配置文件和钩子文件。如果项目已经声明了较旧的工具版本，请将实际使用的工具更新到支持的版本范围：`husky@^9.1.7`、`@commitlint/cli@^21.2.2`、
-`commitizen@^4.3.2` 和 `cz-customizable@^7.5.4`。
+会补充缺失的依赖和配置，并保留已有的脚本、依赖版本、配置文件和钩子文件。提交钩子使用 `husky@^9.1.7` 和
+`@commitlint/cli@^21.2.4`。新配置的提交助手使用 `czg@^1.14.0`。对于已有的 Commitizen 配置，`init --commit-helper`
+会将缺失的 `commitizen@^4.3.2` 和 `cz-customizable@^7.5.4` 补入项目的开发依赖。
 
 ### 3. 迁移旧钩子并检查预设路径
 
@@ -141,7 +141,7 @@ npm run prepare
 中的以下内容：
 
 ```sh
-npx --no -- commitlint --edit "$1"
+commitlint --edit "$1"
 ```
 
 `prepare` 脚本必须运行 `husky`；`init --hooks` 会添加该命令。其他旧钩子（例如 pre-commit 中的 lint 命令）需要手动迁移。
@@ -178,8 +178,8 @@ npx bump-version --dry-run
 ```
 
 检查预览中的版本号、更新日志、文件、提交和标签。这些命令不会执行发布。如需通过 npm 脚本预览，使用
-`npm run release -- --dry-run`（PowerShell 中使用 `npm.cmd run release -- --dry-run`）。使用 Yarn 时，运行
-`yarn bump-version doctor` 和 `yarn release --dry-run`。
+`npm run release -- --dry-run`（PowerShell 中使用 `npm.cmd run release -- --dry-run`）。使用 pnpm 时，运行
+`pnpm exec bump-version doctor` 和 `pnpm run release --dry-run`。
 
 提交迁移改动后，即可使用原来的发布命令；无人值守发布需添加
 `--yes`。发布到 npm 仍需单独执行。如果创建发布提交后发生错误，请参阅[发布检查与失败恢复](#发布检查与失败恢复)。
@@ -192,8 +192,8 @@ npx bump-version --dry-run
 | -------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------ |
 | 手动编写提交信息，只使用发布功能             | 无需额外工具                                                            | 普通的 `init`                  |
 | 执行 `git commit` 时拒绝不符合规范的提交信息 | `husky` 运行 Git 钩子；`@commitlint/cli` 检查提交信息                   | `init --hooks`                 |
-| 通过回答提示问题来生成提交信息               | `commitizen` 提供 `git-cz` 命令；`cz-customizable` 提供可配置的交互提示 | `init --commit-helper`         |
-| 同时使用交互式提交和提交检查                 | 上述四个工具                                                            | `init --hooks --commit-helper` |
+| 通过回答提示问题来生成提交信息               | `czg` 读取所选预设并引导填写提交信息                                    | `init --commit-helper`         |
+| 同时使用交互式提交和提交检查                 | `czg`、`husky` 和 `@commitlint/cli`                                     | `init --hooks --commit-helper` |
 
 这两项集成相互独立。提交助手不会强制检查通过 `git commit` 手动编写的信息；提交钩子也不依赖提交助手。这些包是可选的 peer
 dependencies，需要在使用相应集成的项目中安装。`node-bump-version` 已包含预设，无需另装预设包。
@@ -225,8 +225,8 @@ npx bump-version init --commit-helper
 npm install
 ```
 
-这会将 `commitizen` 和 `cz-customizable` 加入 `devDependencies`，向 `package.json` 添加 `cz`
-脚本及助手配置，并在需要时创建 `.cz-config.cjs`。先用 `git add` 暂存要提交的文件，再运行：
+首次配置时，此命令会将 `czg` 加入 `devDependencies`，向 `package.json` 添加 `cz` 脚本，并用所选预设创建
+`.cz-config.cjs`。已有的 Commitizen 配置会继续使用原适配器。先用 `git add` 暂存要提交的文件，再运行以下命令。
 
 ```bash
 npm run cz
@@ -237,8 +237,8 @@ npm run cz
 如果要一次启用两项集成，运行 `npx bump-version init --hooks --commit-helper`，然后执行 `npm install` 和
 `npm run prepare`。如果项目尚未选择预设，可以按需添加 `--preset conventional`。
 
-使用 Yarn 时，将 `npx bump-version` 替换为 `yarn bump-version`，`npm install` 替换为 `yarn install`， `npm run prepare`
-替换为 `yarn prepare`，`npm run cz` 替换为 `yarn cz`。
+使用 pnpm 时，将 `npx bump-version` 替换为 `pnpm exec bump-version`，`npm install` 替换为 `pnpm install`， `npm run prepare`
+替换为 `pnpm run prepare`，`npm run cz` 替换为 `pnpm run cz`。
 
 ## 配置项目
 
@@ -303,7 +303,7 @@ module.exports = {
 `.husky/commit-msg` 文件内容如下：
 
 ```sh
-npx --no -- commitlint --edit "$1"
+commitlint --edit "$1"
 ```
 
 `package.json` 中的 `prepare` 脚本负责运行 `husky`。如果已有 `prepare` 脚本，`init --hooks` 会在需要时追加
@@ -317,15 +317,7 @@ npx --no -- commitlint --edit "$1"
 ```json
 {
   "scripts": {
-    "cz": "git-cz"
-  },
-  "config": {
-    "commitizen": {
-      "path": "cz-customizable"
-    },
-    "cz-customizable": {
-      "config": ".cz-config.cjs"
-    }
+    "cz": "czg --config=.cz-config.cjs"
   }
 }
 ```
@@ -419,7 +411,8 @@ refactor(api)!: replace the configuration format
 
 写入之前，工具会检查版本号、包清单和 npm 锁文件、当前分支、标签是否可用、文件路径及配置的推送目标。正式发布要求已跟踪文件和发布文件没有未提交的改动。无关的未跟踪文件会保留；预览可以在存在未提交改动时运行。
 `package.json`、`package-lock.json` 和 `npm-shrinkwrap.json`
-会同步更新，并保留缩进与换行风格。更新日志会在任何文件写入之前准备好。
+会同步更新，并保留缩进与换行风格。pnpm 项目仅升级包自身版本时，版本号写入 `package.json`，现有的
+`pnpm-lock.yaml` 仍可用于 `pnpm install --frozen-lockfile`。更新日志会在写入文件之前准备好。
 
 如果写入或提交失败，工具会在安全的情况下恢复自己产生的改动。并发修改会保留，并提示手动恢复。如果提交成功，但创建标签或推送失败，发布提交会保留。请解决报错原因，再为该提交完成标签创建或推送，不要重新执行版本升级。推送时只包含发布分支和本次发布的标签。默认使用原子推送；服务器不支持时会报错。
 
@@ -442,12 +435,12 @@ npx bump-version doctor --json
 ## 常见问题
 
 先运行 `npx bump-version doctor`（或
-`yarn bump-version doctor`）。它会检查 Node、包版本、Git 和当前分支，并根据检测到的集成配置检查相应依赖和钩子设置。
+`pnpm exec bump-version doctor`）。它会检查 Node、包版本、Git 和当前分支，并根据检测到的集成配置检查相应依赖和钩子设置。
 
 | 问题                                     | 处理方式                                                                                                      |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | 安装或初始化后发布失败                   | 检查并提交包清单、锁文件和配置文件的改动。正式发布要求已跟踪文件和发布文件没有未提交的改动。                  |
-| 找不到 `husky`、`commitlint` 或 `git-cz` | 在运行相应的 `init` 命令后执行 `npm install`，并确保安装了开发依赖。                                          |
+| 找不到 `husky`、`commitlint`、`czg` 或 `git-cz` | 在运行相应的 `init` 命令后执行 `npm install`，并确保安装了开发依赖。                                          |
 | 提交信息没有被检查                       | 在 Git 根目录运行 `npm run prepare`，确认 `.husky/commit-msg` 会调用 commitlint，并查看 `doctor` 的检查结果。 |
 | 看似合法的提交或发布提交被拒绝           | 让发布工具、commitlint 和助手配置使用相同预设。`init` 会保留已有配置。                                        |
 | `init --preset` 报告冲突                 | 手动修改 `package.json` 中已有的 `bumpVersion.preset`，再同步修改可选工具的配置。                             |
@@ -455,8 +448,11 @@ npx bump-version doctor --json
 | `--type auto` 提示上次发布后没有新提交   | 添加新提交；如果确实需要再次发布，显式指定类型，例如 `--type patch`。                                         |
 | CI 发布因交互提示而失败                  | 正式发布使用 `--yes`，预览使用 `--dry-run`；同时确保检出的是分支，而不是 detached HEAD 状态。                 |
 
-从旧配置升级时，可以运行 `init --commit-helper`，再安装依赖，将 `commitizen` 和 `cz-customizable`
-添加为直接开发依赖。从 Husky 4 迁移时，请删除旧的顶层 `husky` 配置，并将钩子迁入 `.husky/` 文件；详见
+要将已有的 Commitizen 配置迁移到 `czg`，请将 `czg` 加入开发依赖，并让 `cz` 脚本指向所用的预设文件，例如
+`czg --config=.cz-config.cjs`。运行一次以验证交互提示。确认其他工具不再使用旧依赖后，即可删除 Commitizen
+相关包及其在 `package.json` 中的配置。
+
+从 Husky 4 迁移时，请将钩子迁入 `.husky/` 文件并删除旧的顶层 `husky` 配置。详见
 [Husky 迁移指南](https://typicode.github.io/husky/migrate-from-v4.html)。
 
 ## 公共 API 与预设
@@ -486,26 +482,26 @@ await executeRelease(options, plan)
 
 ## 开发
 
-本仓库使用 Yarn **1.22.22**，版本固定在 `packageManager` 字段中。
+本仓库通过 `packageManager` 固定使用 pnpm **12.21.0**。运行 `npm install -g pnpm@12.21.0` 即可安装对应版本。
 
 ```bash
-yarn install --frozen-lockfile
-yarn build
-yarn lint:check
-yarn typecheck
-yarn test
-yarn test:regressions
-yarn test:package
+pnpm install --frozen-lockfile
+pnpm run build
+pnpm run lint:check
+pnpm run typecheck
+pnpm run test
+pnpm run test:regressions
+pnpm run test:package
 ```
 
 在本仓库第一次提交前先执行构建，因为本地 commitlint 配置从 `dist/` 加载。pre-commit 钩子会运行
-`yarn lint`，commit-msg 钩子会运行 commitlint。可以先运行 `git add .`，再运行 `yarn cz` 编写提交信息。
+`pnpm run lint`，commit-msg 钩子会运行 commitlint。可以先运行 `git add .`，再运行 `pnpm run cz` 编写提交信息。
 
-构建分两轮完成：第一轮编译所有 JavaScript 入口并共享公共模块，第二轮生成类型声明。构建前会清理产物。目前仍保留
-`--forceExit` 选项，确保构建完成后能正常退出。
+构建会先清理 `dist/`，再由 Rolldown 生成面向 Node 24 的 ES 模块和源映射，最后用 TypeScript 生成对应的类型声明。
+运行 `pnpm run dev` 可以在源文件改动时重新生成两类产物。
 
 CI 覆盖 Windows、Linux 和 macOS，以及 Node
-22.13.0、当前 22.x、24.x 和 26.x。检查内容包括 lint、类型、发布测试、11 项审计回归测试，以及 npm 压缩包的隔离安装。
+24.0.0、当前 24.x 和 26.x。检查内容包括 lint、类型、发布测试、11 项审计回归测试，以及 npm 压缩包的隔离安装。
 `test:package`
 需要访问 registry，且必须先构建；它会安装运行时依赖而不安装可选集成，并在临时本地仓库中执行发布。测试不会发布包，也不会使用本项目的远程仓库。回归测试命令见
 [scripts/README.md](scripts/README.md)。

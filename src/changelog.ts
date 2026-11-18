@@ -2,10 +2,10 @@ import * as path from 'node:path'
 
 import { ConventionalChangelog } from 'conventional-changelog'
 
-import conventionalChangelogNode from './conventional-changelog-node/index'
-import conventionalChangelogStandard from './conventional-changelog-standard/index'
-import { applyFileChanges, type FileChange, readOptionalFile } from './file-changes'
-import { BumpVersionArgs } from './types/index'
+import conventionalChangelogNode from './conventional-changelog-node/index.js'
+import conventionalChangelogStandard from './conventional-changelog-standard/index.js'
+import { applyFileChanges, type FileChange, readOptionalFile } from './file-changes.js'
+import { BumpVersionArgs } from './types/index.js'
 
 export const prepareChangelog = async (argv: BumpVersionArgs, newVersion: string): Promise<FileChange | undefined> => {
   if (argv.changelog === false) {

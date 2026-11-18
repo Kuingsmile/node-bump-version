@@ -1,6 +1,6 @@
 import exec from './exec.js'
 import { type PushTarget, resolvePushTarget } from './push-target.js'
-import { BumpVersionArgs } from './types/index'
+import { BumpVersionArgs } from './types/index.js'
 
 const tag = async (argv: BumpVersionArgs, newVersion: string, target?: PushTarget): Promise<string | void> => {
   if (argv.dry) {

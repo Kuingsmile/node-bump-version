@@ -1,4 +1,4 @@
-import custom from '../commitlint-node/index'
+import custom from '../commitlint-node/index.js'
 
 export default {
   ...custom,

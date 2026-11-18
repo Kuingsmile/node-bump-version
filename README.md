@@ -19,7 +19,7 @@ A release updates the package version and changelog, commits those changes, and 
 
 ### 1. Check the requirements
 
-- Node.js **22.13.0+ on the 22.x line, or 24+** (`^22.13.0 || >=24.0.0`; Node 23 is not supported).
+- Node.js **24.0.0 or later**.
 - Git installed, with your author name and email configured for commits.
 - A project with a `package.json` containing a valid version, such as `"version": "1.0.0"`.
 - A Git repository with at least one commit, checked out on a branch.
@@ -38,11 +38,11 @@ npm install -D node-bump-version
 npx bump-version init
 ```
 
-With Yarn:
+With pnpm:
 
 ```bash
-yarn add -D node-bump-version
-yarn bump-version init
+pnpm add -D node-bump-version
+pnpm exec bump-version init
 ```
 
 By default, `init` adds these fields to `package.json` if they are missing:
@@ -59,7 +59,7 @@ By default, `init` adds these fields to `package.json` if they are missing:
 ```
 
 If your commits look like `feat: add a feature` or `fix: fix a bug`, use `npx bump-version init --preset conventional`
-instead of plain `init` (Yarn: `yarn bump-version init --preset conventional`). See
+instead of plain `init` (pnpm: `pnpm exec bump-version init --preset conventional`). See
 [Choose a commit convention](#choose-a-commit-convention) for examples.
 
 `init` preserves an existing `release` script. If your project already has one, merge `bump-version` into it as needed,
@@ -74,11 +74,11 @@ npx bump-version doctor
 npm run release -- --dry-run
 ```
 
-With Yarn:
+With pnpm:
 
 ```bash
-yarn bump-version doctor
-yarn release --dry-run
+pnpm exec bump-version doctor
+pnpm run release --dry-run
 ```
 
 `doctor` checks the project setup. `--dry-run` previews a patch release, including the files, changelog, commit, and
@@ -97,7 +97,7 @@ and release files must be clean. If you want commit checks or a commit helper, s
 npm run release
 ```
 
-Or run `yarn release`. In an interactive terminal, the tool asks you to confirm the next version. The release stays in
+Or run `pnpm run release`. In an interactive terminal, the tool asks you to confirm the next version. The release stays in
 your local repository unless you add `--push`.
 
 ## Migrate from v2.0 to v3.0
@@ -108,20 +108,19 @@ opt-in; upgrading does not require rewriting commit history.
 
 ### 1. Update Node.js and the package
 
-Update local development and CI to Node.js **22.13.0+ on the 22.x line, or 24+** (`^22.13.0 || >=24.0.0`). Node 23 is
-not supported. Once v3 is published, upgrade the development dependency:
+Use Node.js **24.0.0 or later** locally and in CI, then upgrade the development dependency.
 
 ```bash
 npm install -D node-bump-version@^3.0.0
-# Or, with Yarn:
-yarn add -D node-bump-version@^3.0.0
+# Or, with pnpm:
+pnpm add -D node-bump-version@^3.0.0
 ```
 
 ### 2. Keep the commit tools you use
 
 In v2, `husky`, `@commitlint/cli`, `commitizen`, and `cz-customizable` were installed as runtime dependencies of
-`node-bump-version`. In v3, they are **optional peer dependencies**. Projects using hooks or `npm run cz` must declare
-the relevant tools directly. Projects using only the release CLI can skip this step.
+`node-bump-version`. In v3, `husky`, `@commitlint/cli`, and `czg` are **optional peer dependencies**. Projects using
+hooks or `npm run cz` declare the relevant tools directly. Projects using only the release CLI can skip this step.
 
 For both commit-message checks and the interactive helper, run these commands at the Git repository root:
 
@@ -135,7 +134,9 @@ npm run prepare
 Use only `--hooks` or `--commit-helper` if you need just one integration; `npm run prepare` is needed for hooks.
 `init` adds missing dependencies and configuration, but preserves existing scripts, dependency versions, configs, and
 hook files. If you already declare older tool versions, update the tools you use to the supported ranges:
-`husky@^9.1.7`, `@commitlint/cli@^21.2.2`, `commitizen@^4.3.2`, and `cz-customizable@^7.5.4`.
+`husky@^9.1.7` and `@commitlint/cli@^21.2.4` for hooks. New commit-helper setups use `czg@^1.14.0`.
+For existing Commitizen setups, `init --commit-helper` adds `commitizen@^4.3.2` and `cz-customizable@^7.5.4` to the
+project’s development dependencies if they are missing.
 
 ### 3. Migrate legacy hooks and review preset paths
 
@@ -144,7 +145,7 @@ into `.husky/` hook files and remove the old `husky` field. The old `commitlint 
 line in `.husky/commit-msg`:
 
 ```sh
-npx --no -- commitlint --edit "$1"
+commitlint --edit "$1"
 ```
 
 The `prepare` script must run `husky`; `init --hooks` adds it. Move any other old hooks, such as a pre-commit lint
@@ -182,8 +183,8 @@ npx bump-version --dry-run
 ```
 
 Review the proposed version, changelog, files, commit, and tag. These commands do not make a release. To preview through
-your npm script, use `npm run release -- --dry-run` (`npm.cmd run release -- --dry-run` in PowerShell). With Yarn, use
-`yarn bump-version doctor` and `yarn release --dry-run`.
+your npm script, use `npm run release -- --dry-run` (`npm.cmd run release -- --dry-run` in PowerShell). With pnpm, use
+`pnpm exec bump-version doctor` and `pnpm run release --dry-run`.
 
 After committing the migration changes, use your usual release command; add `--yes` for an unattended release.
 Publishing to npm remains a separate step. See [Release safety and recovery](#release-safety-and-recovery) for handling
@@ -198,8 +199,8 @@ work without them, provided you write commits that match your chosen convention.
 | -------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------ |
 | Release from commits you write yourself                  | No extra tools                                                                      | Plain `init`                   |
 | Reject invalid commit messages when running `git commit` | `husky` runs Git hooks; `@commitlint/cli` checks the message                        | `init --hooks`                 |
-| Answer prompts to compose a commit message               | `commitizen` provides `git-cz`; `cz-customizable` supplies the configurable prompts | `init --commit-helper`         |
-| Both guided commits and commit checks                    | All four tools above                                                                | `init --hooks --commit-helper` |
+| Answer prompts to compose a commit message               | `czg` reads the chosen preset and prompts for a message                             | `init --commit-helper`         |
+| Both guided commits and commit checks                    | `czg`, `husky`, and `@commitlint/cli`                                              | `init --hooks --commit-helper` |
 
 The two integrations are independent. A commit helper does not enforce messages written with `git commit`; hooks can
 check messages without a helper. These packages are optional peer dependencies: install them in each project that uses
@@ -233,8 +234,9 @@ npx bump-version init --commit-helper
 npm install
 ```
 
-This declares `commitizen` and `cz-customizable` in `devDependencies`, adds a `cz` script and helper settings to
-`package.json`, and creates `.cz-config.cjs` if needed. Stage the files you want to commit with `git add`, then run:
+On a new setup, this adds `czg` to `devDependencies`, adds a `cz` script to `package.json`, and creates
+`.cz-config.cjs` with the selected preset. It also recognizes an existing Commitizen setup and uses its adapter.
+Stage your files with `git add`, then run the helper.
 
 ```bash
 npm run cz
@@ -245,8 +247,8 @@ The helper asks for the commit type, scope, and message, then creates the commit
 To enable both integrations in one step, use `npx bump-version init --hooks --commit-helper`, then run `npm install` and
 `npm run prepare`. On a project that has not selected a preset yet, append `--preset conventional` if needed.
 
-For Yarn, replace `npx bump-version` with `yarn bump-version`, `npm install` with `yarn install`, `npm run prepare` with
-`yarn prepare`, and `npm run cz` with `yarn cz`.
+For pnpm, replace `npx bump-version` with `pnpm exec bump-version`, `npm install` with `pnpm install`, `npm run prepare` with
+`pnpm run prepare`, and `npm run cz` with `pnpm run cz`.
 
 ## Configure your project
 
@@ -312,7 +314,7 @@ edit that config instead of adding a second one.
 The `.husky/commit-msg` file contains:
 
 ```sh
-npx --no -- commitlint --edit "$1"
+commitlint --edit "$1"
 ```
 
 The `prepare` script in `package.json` runs `husky`. If you already have a `prepare` script, `init --hooks` appends
@@ -327,15 +329,7 @@ After installing the [commit helper](#add-an-interactive-commit-helper), these s
 ```json
 {
   "scripts": {
-    "cz": "git-cz"
-  },
-  "config": {
-    "commitizen": {
-      "path": "cz-customizable"
-    },
-    "cz-customizable": {
-      "config": ".cz-config.cjs"
-    }
+    "cz": "czg --config=.cz-config.cjs"
   }
 }
 ```
@@ -431,8 +425,9 @@ characters**, including its type and scope.
 Before writing, the tool checks the version, manifests and npm lockfiles, branch, tag availability, file paths, and
 configured push destination. Real releases require clean tracked files and clean release files. Unrelated untracked
 files are preserved; dry previews may inspect uncommitted work. `package.json`, `package-lock.json`, and
-`npm-shrinkwrap.json` are updated together, retaining indentation and line endings. The changelog is prepared before any
-file is written.
+`npm-shrinkwrap.json` are updated together, retaining indentation and line endings. A version-only bump in a pnpm
+project changes `package.json` and keeps `pnpm-lock.yaml` valid for frozen installs. The changelog is prepared before
+any file is written.
 
 If a write or commit fails, the tool restores its own changes where safe. Concurrent edits are preserved and reported
 for manual recovery. If a commit succeeds but tagging or pushing fails, the release commit is retained. Resolve the
@@ -457,13 +452,13 @@ Failures return an `error` object with `code` and `message` and exit 1. Interrup
 
 ## Troubleshooting
 
-Start with `npx bump-version doctor` (or `yarn bump-version doctor`). It checks Node, the package version, Git and the
+Start with `npx bump-version doctor` (or `pnpm exec bump-version doctor`). It checks Node, the package version, Git and the
 branch, plus dependencies and hook setup for integrations detected in your configuration.
 
 | Problem                                               | What to do                                                                                                              |
 | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | Release fails after installation or setup             | Review and commit the changed manifests, lockfile, and config files. Real releases require clean tracked/release files. |
-| Missing `husky`, `commitlint`, or `git-cz`            | Run `npm install` after the relevant `init` command, with development dependencies enabled.                             |
+| Missing `husky`, `commitlint`, `czg`, or `git-cz`     | Run `npm install` after the relevant `init` command, with development dependencies enabled.                             |
 | Commits are not checked                               | Run `npm run prepare` at the Git root and ensure `.husky/commit-msg` invokes commitlint. Check the `doctor` results.    |
 | A valid-looking commit or release commit is rejected  | Make the release, commitlint, and helper configs use the same preset. Existing configs are preserved by `init`.         |
 | `init --preset` reports a conflict                    | Edit the existing `bumpVersion.preset` in `package.json` explicitly, then align the optional-tool configs.              |
@@ -471,9 +466,12 @@ branch, plus dependencies and hook setup for integrations detected in your confi
 | `--type auto` finds no commits since the last release | Add new commits, or choose an explicit type such as `--type patch` if you intend to release anyway.                     |
 | Release fails in CI with a prompt error               | Use `--yes` for a real release or `--dry-run` for a preview, and check out a branch instead of detached HEAD.           |
 
-Upgrading an older setup? Add `commitizen` and `cz-customizable` as direct development dependencies by running
-`init --commit-helper` and then installing dependencies. For Husky 4, remove the old top-level `husky` configuration and
-move hooks into `.husky/` files; see the [Husky migration guide](https://typicode.github.io/husky/migrate-from-v4.html).
+To switch an existing Commitizen setup to `czg`, add `czg` as a development dependency and point the `cz` script at
+your preset, for example `czg --config=.cz-config.cjs`. Run it once to verify your prompts, then remove the old
+Commitizen packages and their `package.json` configuration if nothing else uses them.
+
+For Husky 4, move the hooks into `.husky/` files and remove the old top-level `husky` configuration. See the
+[Husky migration guide](https://typicode.github.io/husky/migrate-from-v4.html).
 
 ## Public API and presets
 
@@ -502,26 +500,25 @@ Existing documented `dist/*` and `.cz-config.cjs` imports remain available.
 
 ## Development
 
-This repository uses Yarn **1.22.22**, pinned in `packageManager`.
+This repository pins pnpm **12.21.0** in `packageManager`. To install that version, run `npm install -g pnpm@12.21.0`.
 
 ```bash
-yarn install --frozen-lockfile
-yarn build
-yarn lint:check
-yarn typecheck
-yarn test
-yarn test:regressions
-yarn test:package
+pnpm install --frozen-lockfile
+pnpm run build
+pnpm run lint:check
+pnpm run typecheck
+pnpm run test
+pnpm run test:regressions
+pnpm run test:package
 ```
 
 Build before the first commit: the local commitlint configuration loads from `dist/`. The pre-commit hook runs
-`yarn lint`; the commit-msg hook runs commitlint. Use `git add .` followed by `yarn cz` to compose a commit.
+`pnpm run lint`; the commit-msg hook runs commitlint. Use `git add .` followed by `pnpm run cz` to compose a commit.
 
-The build compiles all JavaScript entry points in one pass and declarations in a second pass, sharing common modules.
-Build outputs are cleaned first. The existing `--forceExit` workaround is retained so completed builds terminate
-reliably.
+The build cleans `dist/`, uses Rolldown to emit Node 24 ES modules and source maps, and runs TypeScript to emit the
+matching declarations. Use `pnpm run dev` to watch both outputs.
 
-CI covers Windows, Linux, and macOS on Node 22.13.0, current 22.x, 24.x, and 26.x. It checks lint, types, release tests,
+CI covers Windows, Linux, and macOS on Node 24.0.0, current 24.x, and 26.x. It checks lint, types, release tests,
 the 11 audit regressions, and an isolated installation of the npm tarball. `test:package` requires registry access and
 an existing build; it installs runtime dependencies without optional integrations and performs a release in a temporary
 local repository. Tests never publish packages or use this project's remotes. See [scripts/README.md](scripts/README.md)

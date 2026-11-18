@@ -1,6 +1,6 @@
-import exec from './exec'
-import { BumpVersionArgs } from './types/index'
-import { checkFileAndGetPath } from './utils'
+import exec from './exec.js'
+import { BumpVersionArgs } from './types/index.js'
+import { checkFileAndGetPath } from './utils.js'
 
 const commit = async (argv: BumpVersionArgs, newVersion: string): Promise<string | void> => {
   const changedFiles = ['package.json', 'package-lock.json', 'npm-shrinkwrap.json']
