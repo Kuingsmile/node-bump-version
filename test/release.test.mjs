@@ -14,7 +14,7 @@ import {
 import { tmpdir } from 'node:os'
 import { delimiter, dirname, join, resolve } from 'node:path'
 import test from 'node:test'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { stripVTControlCharacters } from 'node:util'
 
 import { ConventionalChangelog } from 'conventional-changelog'
@@ -87,7 +87,6 @@ function assertChangelog(content, version) {
   assert.match(content, /\[#42\]\(https:\/\/github.com\/example\/release-fixture\/issues\/42\)/)
   assert.match(content, /### BREAKING CHANGES/)
   assert.match(content, /change the fixture API/)
-  assert.match(content, /# Previous release/)
   assert.doesNotMatch(content, /initial release/)
 }
 
@@ -509,6 +508,7 @@ test('dry release generates the custom changelog without changing files, commits
   t.mock.method(console, 'log', (...args) => output.push(args.join(' ')))
   await mainLifeCycle({ _: [], path: cwd, file: join(cwd, 'CHANGELOG.md'), dry: true }, '1.0.0', '2.0.0')
   assertChangelog(output.join('\n'), '2.0.0')
+  assert.doesNotMatch(output.join('\n'), /# Previous release/)
   assert.equal(git(cwd, 'status', '--porcelain'), '')
   assert.equal(git(cwd, 'rev-parse', 'HEAD'), head)
   assert.equal(git(cwd, 'tag', '--list'), 'v1.0.0')
@@ -534,6 +534,7 @@ test('release updates versions and changelog, commits the files and creates an a
     assert.equal(JSON.parse(readFileSync(join(cwd, file), 'utf8')).version, '2.0.0')
   }
   assertChangelog(readFileSync(join(cwd, 'CHANGELOG.md'), 'utf8'), '2.0.0')
+  assert.ok(readFileSync(join(cwd, 'CHANGELOG.md'), 'utf8').endsWith('# Previous release\n'))
   assert.equal(git(cwd, 'log', '-1', '--format=%s'), ':tada: Release: v2.0.0')
   assert.equal(git(cwd, 'cat-file', '-t', 'v2.0.0'), 'tag')
   assert.equal(git(cwd, 'rev-parse', 'v2.0.0^{}'), git(cwd, 'rev-parse', 'HEAD'))
@@ -571,4 +572,207 @@ test('interactive CLI respects --no-changelog and --no-tag', async t => {
   assert.equal(git(cwd, 'log', '-1', '--format=%s'), ':tada: Release: v1.0.1')
   assert.equal(git(cwd, 'tag', '--list'), 'v1.0.0')
   assert.equal(git(cwd, 'status', '--porcelain'), '')
+})
+
+test('ignored release paths are rejected before writing and checked again after planning', async t => {
+  const cwd = fixture(t)
+  const argv = { _: [], path: cwd, json: true, file: 'notes.md' }
+  const before = readFileSync(join(cwd, 'package.json'), 'utf8')
+  const plan = await planRelease(argv, '1.0.0', '1.0.1')
+  writeFileSync(join(cwd, '.git/info/exclude'), 'notes.md\n')
+  await assert.rejects(executeRelease(argv, plan), /Git ignores release files/)
+  await assert.rejects(planRelease(argv, '1.0.0', '1.0.1'), /Git ignores release files/)
+  assert.ok(doctorProject(argv).checks.some(check => check.name === 'ignored' && !check.ok))
+  assert.equal(existsSync(join(cwd, 'notes.md')), false)
+  assert.equal(readFileSync(join(cwd, 'package.json'), 'utf8'), before)
+  assert.equal(git(cwd, 'status', '--porcelain'), '')
+})
+
+test('a locked Git index cannot prevent rollback of release files', async t => {
+  const cwd = fixture(t)
+  const argv = { _: [], path: cwd, file: 'notes.md', json: true }
+  const plan = await planRelease(argv, '1.0.0', '1.0.1')
+  writeFileSync(join(cwd, '.git/index.lock'), 'another process')
+  await assert.rejects(executeRelease(argv, plan), /index\.lock/)
+  assert.equal(readFileSync(join(cwd, '.git/index.lock'), 'utf8'), 'another process')
+  for (const change of plan.changes) {
+    if (change.before === null) assert.equal(existsSync(change.path), false)
+    else assert.equal(readFileSync(change.path, 'utf8'), change.before)
+  }
+  assert.equal(git(cwd, 'rev-parse', 'HEAD'), plan.head)
+  assert.equal(git(cwd, 'diff', '--cached', '--name-only'), '')
+})
+
+test('a lockfile created after planning is preserved and requires a fresh preview', async t => {
+  const cwd = fixture(t)
+  const argv = { _: [], path: cwd, json: true }
+  const plan = await planRelease(argv, '1.0.0', '1.0.1')
+  const lock = join(cwd, 'npm-shrinkwrap.json')
+  const before = '{"version":"1.0.0"}\n'
+  writeFileSync(lock, before)
+  await assert.rejects(executeRelease(argv, plan), /Lockfile appeared after preview/)
+  assert.equal(readFileSync(lock, 'utf8'), before)
+  assert.equal(git(cwd, 'rev-parse', 'HEAD'), plan.head)
+  assert.equal(git(cwd, 'diff', '--cached', '--name-only'), '')
+})
+
+test('stable tags take precedence over RCs for recommendations and notes', async t => {
+  const cwd = fixture(t)
+  git(cwd, 'tag', 'v1.0.0-rc.1', 'HEAD~2')
+  git(cwd, 'tag', '-f', 'v1.0.0')
+  const argv = { _: [], path: cwd, dry: true }
+  await assert.rejects(recommendVersion(argv), /No commits since/)
+  git(cwd, 'commit', '--allow-empty', '-m', ':bug: Fix: after stable')
+  const recommendation = await recommendVersion(argv)
+  assert.deepEqual([recommendation.type, recommendation.from, recommendation.commits], ['patch', 'v1.0.0', 1])
+  const plan = await planRelease(argv, '1.0.0', '1.0.1')
+  assert.match(plan.releaseNotes, /after stable/)
+  assert.doesNotMatch(plan.releaseNotes, /add a feature|Previous release/)
+  const file = join(cwd, 'package.json')
+  const manifest = JSON.parse(readFileSync(file, 'utf8'))
+  writeFileSync(file, JSON.stringify({ ...manifest, description: 'maintenance' }))
+  git(cwd, 'commit', '-am', 'chore(release): v1.0.0')
+  assert.equal((await recommendVersion(argv)).from, 'v1.0.0')
+})
+
+test('shallow recommendations require the full range up to the release', async t => {
+  const source = fixture(t)
+  const cwd = join(source, 'shallow')
+  git(source, 'clone', '--depth=1', pathToFileURL(source).href, cwd)
+  const argv = { _: [], path: cwd, dry: true }
+  await assert.rejects(recommendVersion(argv), /git fetch --unshallow --tags/)
+  git(cwd, 'fetch', '--unshallow', '--tags')
+  assert.deepEqual(await recommendVersion(argv), await recommendVersion({ ...argv, path: source }))
+  git(source, 'tag', '-f', 'v1.0.0', 'HEAD~1')
+  const covered = join(source, 'shallow-with-release-tag')
+  git(source, 'clone', '--depth=2', pathToFileURL(source).href, covered)
+  assert.equal(git(covered, 'rev-parse', '--is-shallow-repository'), 'true')
+  assert.deepEqual(
+    await recommendVersion({ ...argv, path: covered }),
+    await recommendVersion({ ...argv, path: source }),
+  )
+})
+
+test('tagless releases use the preceding release of the target package in both presets', async t => {
+  for (const preset of ['emoji', 'conventional']) {
+    const cwd = fixture(t)
+    const argv = { _: [], path: cwd, preset, tag: false, json: true }
+    await mainLifeCycle(argv, '1.0.0', '2.0.0')
+    const previous = git(cwd, 'rev-parse', 'HEAD')
+    await assert.rejects(recommendVersion(argv), /No commits since/)
+    git(cwd, 'commit', '--allow-empty', '-m', preset === 'emoji' ? ':bug: Fix: later fix' : 'fix: later fix')
+    const result = await recommendVersion(argv)
+    assert.deepEqual([result.from, result.type, result.commits], [previous, 'patch', 1])
+    const plan = await planRelease(argv, '2.0.0', '2.0.1')
+    assert.match(plan.releaseNotes, /later fix/)
+    assert.doesNotMatch(plan.releaseNotes, /add a feature|Previous release|\bv2\.0\.0\b/)
+    const priorNotes = readFileSync(join(cwd, 'CHANGELOG.md'), 'utf8')
+    await executeRelease(argv, plan)
+    assert.equal(readFileSync(join(cwd, 'CHANGELOG.md'), 'utf8'), plan.releaseNotes + priorNotes)
+  }
+})
+
+test('recommendations stream large messages and use the configured preset across API and CLI', async t => {
+  const cwd = fixture(t)
+  const manifest = join(cwd, 'package.json')
+  const pkg = JSON.parse(readFileSync(manifest, 'utf8'))
+  writeFileSync(manifest, JSON.stringify({ ...pkg, bumpVersion: { preset: 'conventional' } }))
+  git(cwd, 'commit', '-am', 'chore: configure preset')
+  git(cwd, 'tag', '-f', 'v1.0.0')
+  execFileSync('git', ['commit', '--allow-empty', '-F', '-'], {
+    cwd,
+    input: 'feat: stream history\n\n' + 'a'.repeat(1100000),
+  })
+  const argv = { _: [], path: cwd, dry: true, json: true }
+  const api = await recommendVersion(argv)
+  assert.equal(api.type, 'minor')
+  assert.equal((await recommendVersion({ ...argv, preset: 'emoji' })).type, 'patch')
+  const plan = await planRelease(argv, '1.0.0', '1.1.0')
+  const preview = JSON.parse(
+    execFileSync(process.execPath, [cli, '--dry-run', '--type', 'auto', '--json'], { cwd, encoding: 'utf8' }),
+  )
+  assert.deepEqual(preview.recommendation, api)
+  assert.match(plan.releaseNotes, /stream history/)
+  assert.equal(preview.releaseNotes, plan.releaseNotes)
+  assert.doesNotMatch(preview.releaseNotes, /Previous release/)
+  assert.equal((await planRelease({ ...argv, changelog: false }, '1.0.0', '1.1.0')).releaseNotes, null)
+  await mainLifeCycle({ ...argv, dry: false }, '1.0.0', '1.1.0')
+  assert.equal(git(cwd, 'log', '-1', '--format=%s'), 'chore(release): v1.1.0')
+})
+
+test('workspace releases update only the selected package in the owning npm lockfiles', async t => {
+  const root = fixture(t)
+  const cwd = join(root, 'packages', 'alpha')
+  mkdirSync(cwd, { recursive: true })
+  const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+  writeFileSync(join(root, 'package.json'), JSON.stringify({ ...pkg, workspaces: ['packages/*'] }))
+  writeFileSync(join(cwd, 'package.json'), JSON.stringify({ name: 'alpha', version: '0.1.0' }))
+  const packages = {
+    '': { version: '1.0.0' },
+    'packages/alpha': { version: '0.1.0' },
+    'packages/beta': { version: '0.3.0' },
+  }
+  for (const [file, lockfileVersion] of [
+    ['package-lock.json', 3],
+    ['npm-shrinkwrap.json', 2],
+  ]) {
+    writeFileSync(join(root, file), JSON.stringify({ version: '1.0.0', lockfileVersion, packages }, null, 4) + '\n')
+  }
+  git(root, 'add', '.')
+  git(root, 'commit', '-m', 'chore: set up workspace')
+  const argv = { _: [], path: cwd, json: true }
+  const plan = await planRelease(argv, '0.1.0', '0.1.1')
+  await executeRelease(argv, plan)
+  for (const file of ['package-lock.json', 'npm-shrinkwrap.json']) {
+    const lock = JSON.parse(git(root, 'show', `v0.1.1:${file}`))
+    assert.equal(lock.version, '1.0.0')
+    assert.deepEqual(lock.packages, { ...packages, 'packages/alpha': { version: '0.1.1' } })
+  }
+  assert.equal(git(root, 'status', '--porcelain'), '')
+  await mainLifeCycle({ ...argv, tag: false }, '0.1.1', '0.1.2')
+  await assert.rejects(recommendVersion(argv), /No commits since/)
+  writeFileSync(join(root, 'package-lock.json'), JSON.stringify({ lockfileVersion: 1, version: '1.0.0' }))
+  await assert.rejects(planRelease(argv, '0.1.2', '0.1.3'), /Refresh the npm lockfile/)
+})
+
+test('doctor reports an unborn branch and only requires identity for Git writes', async t => {
+  const parent = fixture(t)
+  const remoteCheck = spawnSync(process.execPath, [cli, 'doctor', '--push', '--json'], {
+    cwd: parent,
+    encoding: 'utf8',
+  })
+  assert.equal(remoteCheck.status, 1)
+  assert.ok(JSON.parse(remoteCheck.stdout).checks.some(check => !check.ok && /remote/i.test(check.message)))
+  assert.equal(git(parent, 'status', '--porcelain'), '')
+  const cwd = join(parent, 'new')
+  mkdirSync(cwd)
+  git(cwd, 'init', '-b', 'main')
+  copyFileSync(join(parent, 'package.json'), join(cwd, 'package.json'))
+  const argv = { _: [], path: cwd, json: true }
+  assert.ok(
+    doctorProject(argv).checks.some(
+      check => check.name === 'head' && !check.ok && /initial Git commit/i.test(check.message),
+    ),
+  )
+  await assert.rejects(planRelease(argv, '1.0.0', '1.0.1'), /initial Git commit/i)
+  git(cwd, 'add', '.')
+  git(
+    cwd,
+    '-c',
+    'user.name=Review',
+    '-c',
+    'user.email=review@example.invalid',
+    '-c',
+    'commit.gpgsign=false',
+    'commit',
+    '-m',
+    'initial',
+  )
+  git(cwd, 'config', 'user.name', '')
+  git(cwd, 'config', 'user.email', '')
+  assert.ok(doctorProject(argv).checks.some(check => check.name === 'identity' && !check.ok))
+  const filesOnly = { ...argv, skipCommit: true, tag: false }
+  assert.equal(doctorProject(filesOnly).ok, true)
+  await mainLifeCycle(filesOnly, '1.0.0', '1.0.1')
+  assert.equal(JSON.parse(readFileSync(join(cwd, 'package.json'), 'utf8')).version, '1.0.1')
 })

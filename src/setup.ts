@@ -6,21 +6,16 @@ import { join, resolve } from 'node:path'
 import * as semver from 'semver'
 
 import toolPackage from '../package.json' with { type: 'json' }
+import { prepareVersionFiles } from './bumpVersion.js'
 import { applyFileChanges, type FileChange, readOptionalFile } from './file-changes.js'
+import { prereleaseId, readPackage, resolvePreset } from './project-config.js'
+import { inspectReleaseGit } from './release-checks.js'
 import type { BumpVersionArgs, PackageJson } from './types/index.js'
 
 const initDependencyVersions = {
   ...toolPackage.peerDependencies,
   commitizen: '^4.3.2',
   'cz-customizable': '^7.5.4',
-}
-
-function readPackage(path: string): { before: string; pkg: PackageJson } {
-  const before = readOptionalFile(join(path, 'package.json'))
-  if (before === null) throw new Error('Unable to read package.json')
-  const pkg: PackageJson = JSON.parse(before)
-  if (!pkg || typeof pkg !== 'object' || Array.isArray(pkg)) throw new Error('package.json must contain an object')
-  return { before, pkg }
 }
 
 export function initProject(argv: BumpVersionArgs): { files: string[]; dryRun: boolean; nextSteps: string[] } {
@@ -31,8 +26,7 @@ export function initProject(argv: BumpVersionArgs): { files: string[]; dryRun: b
     if (value !== undefined && (!value || typeof value !== 'object' || Array.isArray(value)))
       throw new Error(`package.json ${name} must be an object`)
   }
-  const preset = argv.preset || pkg.bumpVersion?.preset || 'emoji'
-  if (preset !== 'emoji' && preset !== 'conventional') throw new Error('Invalid bumpVersion.preset')
+  const preset = resolvePreset(argv, pkg)
   if (pkg.bumpVersion?.preset && argv.preset && pkg.bumpVersion.preset !== argv.preset) {
     throw new Error('Existing bumpVersion.preset conflicts with --preset; edit it explicitly before initializing')
   }
@@ -142,8 +136,24 @@ export function doctorProject(argv: BumpVersionArgs) {
     typeof pkg.version === 'string' && !!semver.valid(pkg.version),
     'package.json must have a valid semantic version',
   )
-  const git = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: path, encoding: 'utf8' })
-  check('git', git.status === 0, 'Git must be installed and the package must be in a repository')
+  let files = [join(path, 'package.json')]
+  try {
+    resolvePreset(argv, pkg)
+    if (semver.valid(pkg.version)) files = prepareVersionFiles(argv, pkg.version).map(change => change.path)
+  } catch (error) {
+    check('configuration', false, error instanceof Error ? error.message : String(error))
+  }
+  if (argv.changelog !== false) files.push(resolve(path, argv.file || 'CHANGELOG.md'))
+  const next =
+    argv.type === 'auto'
+      ? null
+      : semver.inc(pkg.version, (argv.type || 'patch') as semver.ReleaseType, prereleaseId(argv))
+  const { root, checks: gitChecks } = inspectReleaseGit(
+    { ...argv, path },
+    files,
+    argv.tag !== false && next ? `v${next}` : undefined,
+  )
+  checks.push(...gitChecks)
   const require = createRequire(join(path, 'package.json'))
   for (const dependency of [
     ...(pkg.scripts?.prepare?.includes('husky') ? ['husky', '@commitlint/cli'] : []),
@@ -158,20 +168,15 @@ export function doctorProject(argv: BumpVersionArgs) {
     }
     check(dependency, installed, `Install ${dependency} in this project`)
   }
-  if (git.status === 0) {
-    const branch = spawnSync('git', ['branch', '--show-current'], { cwd: path, encoding: 'utf8' })
-    check('branch', !!branch.stdout?.trim(), 'Check out a branch before releasing')
-    if (pkg.scripts?.prepare?.includes('husky')) {
-      const root = git.stdout.trim()
-      const hook = readOptionalFile(join(root, '.husky/commit-msg'))
-      check('commit-msg', !!hook?.includes('commitlint'), 'Configure a commit-msg hook that invokes commitlint')
-      const config = spawnSync('git', ['config', '--get', 'core.hooksPath'], { cwd: root, encoding: 'utf8' })
-      check(
-        'hooks',
-        config.status === 0 && resolve(root, config.stdout.trim()) === resolve(root, '.husky/_'),
-        'Run the prepare script to activate Husky',
-      )
-    }
+  if (root && pkg.scripts?.prepare?.includes('husky')) {
+    const hook = readOptionalFile(join(root, '.husky/commit-msg'))
+    check('commit-msg', !!hook?.includes('commitlint'), 'Configure a commit-msg hook that invokes commitlint')
+    const config = spawnSync('git', ['config', '--get', 'core.hooksPath'], { cwd: root, encoding: 'utf8' })
+    check(
+      'hooks',
+      config.status === 0 && resolve(root, config.stdout.trim()) === resolve(root, '.husky/_'),
+      'Run the prepare script to activate Husky',
+    )
   }
   return { ok: checks.every(item => item.ok), checks }
 }

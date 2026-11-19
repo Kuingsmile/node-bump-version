@@ -41,7 +41,8 @@ export function restoreFileChanges(changes: FileChange[]): void {
       failures.push(error)
     }
   }
-  if (failures.length) throw new AggregateError(failures, 'Some release files need manual recovery')
+  if (failures.length)
+    throw new AggregateError(failures, `Some release files need manual recovery: ${failures.map(String).join('\n')}`)
 }
 
 export function applyFileChanges(changes: FileChange[]): void {
@@ -55,7 +56,11 @@ export function applyFileChanges(changes: FileChange[]): void {
       applied.push(change)
     }
   } catch (error) {
-    restoreFileChanges(applied)
+    try {
+      restoreFileChanges(applied)
+    } catch (cleanupError) {
+      throw new AggregateError([error, cleanupError], `${error}\n${cleanupError}`, { cause: cleanupError })
+    }
     throw error
   }
 }

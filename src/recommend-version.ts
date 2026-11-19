@@ -1,10 +1,10 @@
 import { CommitParser } from 'conventional-commits-parser'
-import * as semver from 'semver'
 
-import recommended from './conventional-changelog-node/conventional-recommended-bump.js'
+import { countCommit, describeBump } from './conventional-changelog-node/conventional-recommended-bump.js'
 import customParser from './conventional-changelog-node/parser-opts.js'
 import standardParser from './conventional-changelog-standard/parser-opts.js'
-import exec from './exec.js'
+import { resolvePreset } from './project-config.js'
+import { readGitRecords, releaseHistory } from './release-history.js'
 import type { BumpVersionArgs, ReleaseType } from './types/index.js'
 
 export interface VersionRecommendation {
@@ -15,24 +15,16 @@ export interface VersionRecommendation {
 }
 
 export async function recommendVersion(argv: BumpVersionArgs): Promise<VersionRecommendation> {
-  const tags = (await exec(argv, 'git', ['tag', '--merged', 'HEAD', '--sort=-version:refname', '--list', 'v[0-9]*']))
-    .trim()
-    .split(/\r?\n/)
-  const from = tags.find(tag => semver.valid(tag.slice(1))) || null
-  const log = await exec(argv, 'git', ['log', '--format=%B%x00', from ? `${from}..HEAD` : 'HEAD', '--'])
-  const parser = new CommitParser(argv.preset === 'conventional' ? standardParser : customParser)
-  const commits = log
-    .split('\0')
-    .map(message => message.trim())
-    .filter(Boolean)
-    .map(message => parser.parse(message))
-  if (!commits.length)
-    throw new Error('No commits since the latest release; specify an explicit --type to release anyway')
-  const normalized = commits.map(commit => ({
-    ...commit,
-    type: String(commit.type).toLowerCase() === 'feat' ? ':sparkles: Feature' : commit.type,
-  }))
-  const recommendation = recommended.whatBump(normalized)
-  const type = (['major', 'minor', 'patch'] as const)[recommendation.level]
-  return { type, reason: recommendation.reason, from, commits: commits.length }
+  const parser = new CommitParser(resolvePreset(argv) === 'conventional' ? standardParser : customParser)
+  const { from, range } = await releaseHistory(argv, true)
+  const counts = { features: 0, breakings: 0 }
+  let commits = 0
+  await readGitRecords(argv, ['log', '-z', '--format=%B', range, '--'], message => {
+    if (!message.trim()) return
+    countCommit(counts, parser.parse(message.trim()))
+    commits++
+  })
+  if (!commits) throw new Error('No commits since the latest release; specify an explicit --type to release anyway')
+  const { level, reason } = describeBump(counts)
+  return { type: (['major', 'minor', 'patch'] as const)[level], reason, from, commits }
 }

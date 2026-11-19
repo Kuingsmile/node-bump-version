@@ -1,24 +1,22 @@
+import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
+
+import { versionFiles } from './bumpVersion.js'
 import exec from './exec.js'
+import { resolvePreset } from './project-config.js'
 import { BumpVersionArgs } from './types/index.js'
-import { checkFileAndGetPath } from './utils.js'
 
-const commit = async (argv: BumpVersionArgs, newVersion: string): Promise<string | void> => {
-  const changedFiles = ['package.json', 'package-lock.json', 'npm-shrinkwrap.json']
-
-  if (argv.changelog !== false) {
-    changedFiles.push(argv.file || 'CHANGELOG.md')
+const commit = async (argv: BumpVersionArgs, newVersion: string, files?: string[]): Promise<string | void> => {
+  if (argv.skipCommit || argv.dry) return
+  if (!files) {
+    const directory = argv.path || '.'
+    files = versionFiles(directory).map(file => file.path)
+    if (argv.changelog !== false) files.push(resolve(directory, argv.file || 'CHANGELOG.md'))
+    files = files.filter(file => existsSync(file))
   }
-
+  if (!files.length) return
   const releaseMsg =
-    argv.preset === 'conventional' ? `chore(release): v${newVersion}` : `:tada: Release: v${newVersion}`
-
-  if (argv.skipCommit) return Promise.resolve()
-
-  const files = checkFileAndGetPath(argv, changedFiles)
-
-  if (files.length === 0 || argv.dry) {
-    return Promise.resolve()
-  }
+    resolvePreset(argv) === 'conventional' ? `chore(release): v${newVersion}` : `:tada: Release: v${newVersion}`
 
   await exec(argv, 'git', ['--literal-pathspecs', 'add', '--', ...files])
   return await exec(argv, 'git', ['--literal-pathspecs', 'commit', '-m', releaseMsg, '--', ...files])

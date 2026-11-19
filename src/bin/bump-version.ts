@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs'
-import { relative, resolve } from 'node:path'
+import { relative } from 'node:path'
 
 import confirm from '@inquirer/confirm'
 import input from '@inquirer/input'
@@ -9,14 +9,31 @@ import * as semver from 'semver'
 
 import { parseCliArgs } from '../cli-options.js'
 import { executeRelease, planRelease, type ReleasePlan } from '../mainLifeCycle.js'
+import { prereleaseId, readPackage, resolvePreset } from '../project-config.js'
 import { recommendVersion, type VersionRecommendation } from '../recommend-version.js'
 import { doctorProject, initProject } from '../setup.js'
-import type { BumpVersionArgs, PackageJson, ReleaseType } from '../types/index.js'
+import type { BumpVersionArgs, ReleaseType } from '../types/index.js'
 import { helperMsg } from '../utils.js'
 
 let argv: BumpVersionArgs = { _: [] }
 let recommendation: VersionRecommendation | undefined
 const releaseTypes: ReleaseType[] = ['major', 'minor', 'patch', 'premajor', 'preminor', 'prepatch', 'prerelease']
+
+async function proposedVersion() {
+  const { pkg } = readPackage(argv.path || '.')
+  const currentVersion = pkg.version
+  if (typeof currentVersion !== 'string' || !semver.valid(currentVersion))
+    throw new Error('Invalid version in package.json!')
+  argv.preset = resolvePreset(argv, pkg)
+  if (argv.type === 'auto') recommendation = await recommendVersion(argv)
+  const releaseType = (recommendation?.type || argv.type || 'patch') as ReleaseType
+  if (!releaseTypes.includes(releaseType)) throw new Error('Invalid release type!')
+  const preid = prereleaseId(argv)
+  if (preid && !semver.valid(`0.0.0-${preid}.0`)) throw new Error('Invalid prerelease identifier')
+  const proposed = semver.inc(currentVersion, releaseType, preid)
+  if (!proposed) throw new Error('Unable to calculate the next version!')
+  return { currentVersion, preid, proposed }
+}
 
 function summary(plan: ReleasePlan) {
   return {
@@ -27,6 +44,7 @@ function summary(plan: ReleasePlan) {
     tag: plan.tag,
     push: plan.push,
     files: plan.changes.map(change => relative(plan.path, change.path)),
+    releaseNotes: plan.releaseNotes,
     commit: !argv.skipCommit,
     recommendation,
   }
@@ -54,7 +72,6 @@ async function main(): Promise<void> {
     console.log(argv.json ? JSON.stringify({ version }) : version)
     return
   }
-  let pkg: PackageJson
   if (argv._[0] === 'init') {
     const result = initProject(argv)
     console.log(
@@ -66,6 +83,19 @@ async function main(): Promise<void> {
   }
   if (argv._[0] === 'doctor') {
     const result = doctorProject(argv)
+    if (result.ok) {
+      try {
+        const { currentVersion, proposed } = await proposedVersion()
+        await planRelease(argv, currentVersion, proposed)
+      } catch (error) {
+        result.ok = false
+        result.checks.push({
+          name: 'release',
+          ok: false,
+          message: error instanceof Error ? error.message : String(error),
+        })
+      }
+    }
     console.log(
       argv.json
         ? JSON.stringify(result)
@@ -74,26 +104,8 @@ async function main(): Promise<void> {
     if (!result.ok) process.exitCode = 1
     return
   }
-  try {
-    pkg = JSON.parse(readFileSync(resolve(argv.path || '.', 'package.json'), 'utf8'))
-  } catch (error) {
-    throw new Error(error instanceof SyntaxError ? 'Invalid JSON in package.json!' : 'Unable to read package.json!', {
-      cause: error,
-    })
-  }
-  if (!pkg || typeof pkg !== 'object' || Array.isArray(pkg)) throw new Error('package.json must contain an object!')
-  if (pkg.bumpVersion?.preset !== undefined && !['emoji', 'conventional'].includes(pkg.bumpVersion.preset))
-    throw new Error('Invalid bumpVersion.preset in package.json')
-  argv.preset ??= pkg.bumpVersion?.preset
-  if (typeof pkg.version !== 'string' || !semver.valid(pkg.version)) throw new Error('Invalid version in package.json!')
-  const currentVersion = pkg.version
-  if (argv.type === 'auto') recommendation = await recommendVersion(argv)
-  const releaseType = (recommendation?.type || argv.type || 'patch') as ReleaseType
-  if (!releaseTypes.includes(releaseType)) throw new Error('Invalid release type!')
-  const preid = argv.preid || (argv['preid-alpha'] ? 'alpha' : argv['preid-beta'] ? 'beta' : '')
-  if (preid && !semver.valid(`0.0.0-${preid}.0`)) throw new Error('Invalid prerelease identifier')
-  let nextVersion = semver.inc(currentVersion, releaseType, preid)
-  if (!nextVersion) throw new Error('Unable to calculate the next version!')
+  const { currentVersion, preid, proposed } = await proposedVersion()
+  let nextVersion = proposed
   const automatic = argv.yes || (argv.dry && !argv.interactive)
   if (!automatic && (argv.json || (!process.stdin.isTTY && !argv.interactive))) {
     throw new Error(
@@ -120,7 +132,7 @@ async function main(): Promise<void> {
       }
       if (selected === 'custom version') {
         const custom = await input({ message: 'Write down your custom version:' })
-        nextVersion = semver.valid(custom)
+        nextVersion = semver.valid(custom) || ''
       } else nextVersion = selected
       if (!nextVersion || !semver.gt(nextVersion, currentVersion)) throw new Error('Invalid version!')
       plan = await planRelease(argv, currentVersion, nextVersion)

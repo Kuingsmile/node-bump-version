@@ -80,7 +80,7 @@ pnpm exec bump-version doctor
 pnpm run release --dry-run
 ```
 
-`doctor` 用于检查项目配置。`--dry-run`
+`doctor` 会检查正式发布的前提条件。运行 `init` 后，它会提示先提交配置改动。`--dry-run`
 会预览一次补丁版本发布，包括文件、更新日志、提交和标签，不会写入任何改动。例如，`1.0.0` 会升级到
 `1.0.1`。如需根据提交记录自动计算发布类型，请添加 `--type auto`。
 
@@ -381,7 +381,10 @@ npx bump-version --help
 ## 版本推荐与更新日志
 
 `--type auto` 会分析从当前提交可达的、版本号最高的合法 `v`
-版本标签之后的提交。存在破坏性变更时推荐 major，新增功能时推荐 minor，其他情况推荐 patch，并说明推荐原因。如果该标签之后没有新提交，但仍需要发布，请显式指定发布类型。默认发布类型仍然是
+版本标签之后的提交，标签按 SemVer 优先级排序。如果目标包随后执行过无标签发布，版本推荐和更新日志都从该发布提交开始计算。
+使用 `--no-tag` 时请保留工具生成的提交标题。`recommendation.from` 给出用于计算的标签或提交哈希。
+若浅克隆缺少这段历史，请运行 `git fetch --unshallow --tags` 后重试。
+存在破坏性变更时推荐 major，新增功能时推荐 minor，其他情况推荐 patch。如果没有新提交，但仍需要发布，请显式指定发布类型。默认发布类型仍然是
 `patch`。
 
 默认的 emoji 提交规范示例：
@@ -416,7 +419,9 @@ refactor(api)!: replace the configuration format
 
 如果写入或提交失败，工具会在安全的情况下恢复自己产生的改动。并发修改会保留，并提示手动恢复。如果提交成功，但创建标签或推送失败，发布提交会保留。请解决报错原因，再为该提交完成标签创建或推送，不要重新执行版本升级。推送时只包含发布分支和本次发布的标签。默认使用原子推送；服务器不支持时会报错。
 
-`--path` 每次只针对一个包，不会自动更新工作区内的依赖版本范围，也不会协调多个包一起发布。
+`--path` 每次只针对一个包。发布 npm 工作区成员时，也会更新所属工作区的 `package-lock.json` 或
+`npm-shrinkwrap.json` 中该成员的版本。若锁文件缺少该条目，请先用 npm 刷新并提交锁文件。
+工作区依赖版本范围和多包协同发布仍需单独处理。
 
 ## CI 与 JSON 输出
 
@@ -429,13 +434,15 @@ npx bump-version doctor --json
 除非设置 `--interactive`，否则预览不会显示交互提示。输入通过管道传入时，正式发布必须使用
 `--yes`。JSON 模式向标准输出写入一个结果，不输出加载动画。成功的发布结果包含
 `ok`、`dryRun`、`path`、`currentVersion`、`newVersion`、 `files`、`branch`、`commit`、`tag` 和
-`push`；请求自动推荐时，还会包含推荐结果。失败时返回带有 `code` 和 `message` 的 `error`
+`push`。`releaseNotes` 是文本预览显示的本次发布的 Markdown 内容，使用 `--no-changelog` 时为 `null`。
+请求自动推荐时，还会包含推荐结果。失败时返回带有 `code` 和 `message` 的 `error`
 对象，并以状态码 1 退出。中断交互提示时以状态码 130 退出。
 
 ## 常见问题
 
 先运行 `npx bump-version doctor`（或
-`pnpm exec bump-version doctor`）。它会检查 Node、包版本、Git 和当前分支，并根据检测到的集成配置检查相应依赖和钩子设置。
+`pnpm exec bump-version doctor`）。它会检查 Node、包版本、Git 分支、首次提交、发布文件状态和忽略规则。
+创建提交或标签时会检查 Git 身份，还会根据集成配置检查相应依赖和钩子设置。
 
 | 问题                                     | 处理方式                                                                                                      |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
@@ -465,7 +472,8 @@ const plan = await planRelease(options, '1.0.0', '1.1.0')
 await executeRelease(options, plan)
 ```
 
-发布计划会记录输入参数、Git 提交及文件内容。如果执行时发布选项、Git 提交或文件发生变化，工具会拒绝继续执行。原有的
+发布计划会记录输入参数、Git 提交、本次发布说明及文件内容。CLI 与公共发布函数按相同顺序选择预设，依次使用显式选项、
+目标包的 `bumpVersion.preset` 和默认值 `emoji`。如果执行时发布选项、Git 提交或文件发生变化，工具会拒绝继续执行。原有的
 `mainLifeCycle`、`bumpVersion`、`changelog`、`commit` 和 `tag`
 导出仍然可用。底层文件操作函数不会执行完整发布流程中的 Git 预检查。
 
@@ -500,7 +508,7 @@ pnpm run test:package
 构建会先清理 `dist/`，再由 Rolldown 生成面向 Node 24 的 ES 模块和源映射，最后用 TypeScript 生成对应的类型声明。
 运行 `pnpm run dev` 可以在源文件改动时重新生成两类产物。
 
-CI 覆盖 Windows、Linux 和 macOS，以及 Node
+每个拉取请求都会在 Linux 和 Node 24 上运行 lint、类型检查和发布测试。完整验证流程覆盖 Windows、Linux 和 macOS，以及 Node
 24.0.0、当前 24.x 和 26.x。检查内容包括 lint、类型、发布测试、11 项审计回归测试，以及 npm 压缩包的隔离安装。
 `test:package`
 需要访问 registry，且必须先构建；它会安装运行时依赖而不安装可选集成，并在临时本地仓库中执行发布。测试不会发布包，也不会使用本项目的远程仓库。回归测试命令见

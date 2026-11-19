@@ -81,7 +81,8 @@ pnpm exec bump-version doctor
 pnpm run release --dry-run
 ```
 
-`doctor` checks the project setup. `--dry-run` previews a patch release, including the files, changelog, commit, and
+`doctor` checks readiness for a real release. After `init`, it will ask you to commit pending setup changes.
+`--dry-run` can still preview a patch release, including the files, new release notes, commit, and
 tag, without writing anything. For example, `1.0.0` becomes `1.0.1`. Add `--type auto` to calculate the release type
 from your commits instead.
 
@@ -393,9 +394,12 @@ or `--no-push`, never `--push false`.
 
 ## Recommendations and changelogs
 
-`--type auto` inspects commits since the highest reachable valid `v` version tag. It recommends major for breaking
-changes, minor for features, and patch otherwise, and explains the recommendation. If there are no commits since that
-tag, choose an explicit release type to release anyway. The default release type remains `patch`.
+`--type auto` and changelog generation start at the highest reachable `v` tag by SemVer precedence. A later
+tagless release of the target package supplies a new starting commit. Keep the generated release subject when using
+`--no-tag` so the next release can recognize it. The recommendation includes its starting tag or commit in `from`.
+Breaking changes recommend major, features recommend minor, and other commits recommend patch. If the range is empty,
+choose an explicit type to release anyway. In a shallow clone with incomplete release history, run
+`git fetch --unshallow --tags` before retrying `--type auto`. The default release type remains `patch`.
 
 The default emoji convention uses headers such as:
 
@@ -435,7 +439,9 @@ reported cause and finish tagging/pushing that existing commit; do not rerun the
 tag is pushed, together with the release branch. Pushes are atomic by default and fail if the server cannot support
 them.
 
-`--path` targets one package. Workspace dependency ranges and coordinated multi-package releases are not automated.
+`--path` targets one package. For an npm workspace it also updates the member's entry in the owning
+`package-lock.json` or `npm-shrinkwrap.json`. If the lockfile lacks that entry, refresh it with npm and commit it before
+releasing. Workspace dependency ranges and coordinated multi-package releases are not automated.
 
 ## CI and JSON output
 
@@ -448,12 +454,14 @@ npx bump-version doctor --json
 Dry runs do not prompt unless `--interactive` is set. Real releases with piped input require `--yes`. JSON mode emits
 one result to stdout without spinner output. Successful release results include `ok`, `dryRun`, `path`,
 `currentVersion`, `newVersion`, `files`, `branch`, `commit`, `tag`, and `push`, plus a recommendation when requested.
+`releaseNotes` contains the new Markdown section shown by the text preview, or `null` with `--no-changelog`.
 Failures return an `error` object with `code` and `message` and exit 1. Interrupting an interactive prompt exits 130.
 
 ## Troubleshooting
 
 Start with `npx bump-version doctor` (or `pnpm exec bump-version doctor`). It checks Node, the package version, Git and the
-branch, plus dependencies and hook setup for integrations detected in your configuration.
+branch, the initial commit, tracked and release file status, Git ignore rules, and Git identity for commits or tags.
+It also checks dependencies and hooks for configured integrations.
 
 | Problem                                               | What to do                                                                                                              |
 | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -483,7 +491,9 @@ const plan = await planRelease(options, '1.0.0', '1.1.0')
 await executeRelease(options, plan)
 ```
 
-A plan records the inputs, Git revision, and file contents. Execution rejects changed release options, revisions, or
+A plan records the inputs, Git revision, new release notes, and file contents. The CLI and public release functions
+resolve the preset from an explicit option, the target package's `bumpVersion.preset`, then `emoji`.
+Execution rejects changed release options, revisions, or
 files. The existing `mainLifeCycle`, `bumpVersion`, `changelog`, `commit`, and `tag` exports remain available. Low-level
 file helpers do not perform the full lifecycle's Git preflight checks.
 
@@ -518,7 +528,8 @@ Build before the first commit: the local commitlint configuration loads from `di
 The build cleans `dist/`, uses Rolldown to emit Node 24 ES modules and source maps, and runs TypeScript to emit the
 matching declarations. Use `pnpm run dev` to watch both outputs.
 
-CI covers Windows, Linux, and macOS on Node 24.0.0, current 24.x, and 26.x. It checks lint, types, release tests,
+Pull requests run lint, type checking, and release tests on Linux with Node 24. The full verification workflow
+covers Windows, Linux, and macOS on Node 24.0.0, current 24.x, and 26.x. It checks lint, types, release tests,
 the 11 audit regressions, and an isolated installation of the npm tarball. `test:package` requires registry access and
 an existing build; it installs runtime dependencies without optional integrations and performs a release in a temporary
 local repository. Tests never publish packages or use this project's remotes. See [scripts/README.md](scripts/README.md)

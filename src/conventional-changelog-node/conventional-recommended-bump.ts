@@ -10,33 +10,29 @@ export interface RecommendedBumpOpts {
   }
 }
 
+interface Counts {
+  features: number
+  breakings: number
+}
+
+export function countCommit(counts: Counts, commit: { notes: Commit['notes']; type?: unknown }) {
+  if (commit.notes.length) counts.breakings += commit.notes.length
+  else if (commit.type === ':sparkles: Feature' || String(commit.type).toLowerCase() === 'feat') counts.features++
+}
+
+export function describeBump({ breakings, features }: Counts) {
+  return {
+    level: breakings ? 0 : features ? 1 : 2,
+    reason: `${breakings === 1 ? 'There is 1 BREAKING CHANGE' : `There are ${breakings} BREAKING CHANGES`} and ${features} feature${features === 1 ? '' : 's'}`,
+  }
+}
+
 const recommendedBumpOpts: RecommendedBumpOpts = {
   parserOpts,
-
   whatBump: commits => {
-    let level = 2
-    let breakings = 0
-    let features = 0
-
-    commits.forEach(commit => {
-      if (commit.notes.length > 0) {
-        breakings += commit.notes.length
-        level = 0
-      } else if (commit.type === ':sparkles: Feature') {
-        features += 1
-        if (level === 2) {
-          level = 1
-        }
-      }
-    })
-
-    return {
-      level,
-      reason:
-        breakings === 1
-          ? `There is ${breakings} BREAKING CHANGE and ${features} feature${features === 1 ? '' : 's'}`
-          : `There are ${breakings} BREAKING CHANGES and ${features} feature${features === 1 ? '' : 's'}`,
-    }
+    const counts = { features: 0, breakings: 0 }
+    for (const commit of commits) countCommit(counts, commit)
+    return describeBump(counts)
   },
 }
 
