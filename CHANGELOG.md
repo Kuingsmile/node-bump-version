@@ -1,3 +1,12 @@
+# :tada: 3.1.0 (2026-11-19)
+
+### :sparkles: Features
+
+* enhance release process with improved versioning and changelog handling ([efa3a0a](https://github.com/Kuingsmile/node-bump-version/commit/efa3a0a))
+
+### :package: Chore
+
+* migrate to pnpm and rolldown ([1eb1d9e](https://github.com/Kuingsmile/node-bump-version/commit/1eb1d9e))
 # :tada: 3.0.0 (2026-09-14)
 
 ### :sparkles: Features
